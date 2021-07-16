@@ -59,7 +59,7 @@ impl ComponentInfo {
         self.version.is_installed() || self.version.is_valid()
     }
 
-    pub fn as_version(&self) -> Option<&semver::Version> {
+    pub fn version(&self) -> Option<&semver::Version> {
         match &self.version {
             Version::Valid(v) => Some(v),
             _ => None,
@@ -80,7 +80,7 @@ pub struct Profile {}
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Config file does not exist, please run `h2o2 detect` or `h2o2 update` first")]
+    #[error("Config file does not exist, please run `h2o2 detect` or `h2o2 install` first")]
     FileNotExist,
 
     #[error("Failed to read config file, consider running `h2o2 detect` to fix")]

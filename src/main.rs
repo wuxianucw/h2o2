@@ -18,15 +18,15 @@ enum SubCommand {
     #[clap(setting = AppSettings::ColoredHelp)]
     Show(h2o2::show::Args),
 
-    /// 检查组件更新
-    /// Checks for component updates
+    /// 检查组件状态
+    /// Checks for component status
     #[clap(setting = AppSettings::ColoredHelp)]
     Check,
 
-    /// 更新组件
-    /// Updates components
+    /// 安装组件
+    /// Installs components
     #[clap(setting = AppSettings::ColoredHelp)]
-    Update(h2o2::update::Args),
+    Install(h2o2::install::Args),
 
     /// 探测已安装的组件并更新配置文件
     /// Detects the components installed and updates config
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
     match args.subcmd {
         SubCommand::Show(_) => h2o2::show::main().await?,
         SubCommand::Check => h2o2::check::main().await?,
-        SubCommand::Update(args) => h2o2::update::main(args).await?,
+        SubCommand::Install(args) => h2o2::install::main(args).await?,
         SubCommand::Detect(args) => h2o2::detect::main(args).await?,
     }
 

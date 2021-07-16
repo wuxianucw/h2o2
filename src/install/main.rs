@@ -38,7 +38,7 @@ pub async fn main(args: Args) -> Result<()> {
         }
     };
 
-    // find out the components that need to be updated, and then `try_join!` them together
+    // find out the components that need installing, and then `try_join!` them together
     #[allow(unused_mut)]
     let mut com = &mut config.components;
 
@@ -46,7 +46,7 @@ pub async fn main(args: Args) -> Result<()> {
     log::info!("检查 Node.js... Checking Node.js...");
     if com.nodejs.is_installed() {
         log::info!("Node.js 已安装，不执行任何操作。 Node.js is already installed, skip.");
-        let version = com.nodejs.as_version().expect("Node.js should have a version if installed");
+        let version = com.nodejs.version().expect("Node.js should have a version if installed");
         check_version!(nodejs, version, warn);
         log::info!(
             "若需要 H2O2 安装一个推荐版本的 Node.js，请删除系统中已存在的版本并重新运行 H2O2。 \
