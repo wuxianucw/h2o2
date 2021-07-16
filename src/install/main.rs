@@ -1,9 +1,11 @@
 use anyhow::Result;
 use clap::Clap;
+use std::sync::{Arc, Mutex};
 
 use crate::{
     check_version,
     config::{self, Config, ConfigError},
+    install::{self, States},
 };
 
 #[derive(Clap, Debug)]
@@ -41,9 +43,16 @@ pub async fn main(args: Args) -> Result<()> {
         }
     };
 
-    // find out the components that need installing, and then `try_join!` them together
+    // find out the components that need installing, and then execute them together
+    // / Node.js -> Yarn -> Hydro
+    // |       \ -> PM2
+    // | MongoDB
+    // | MinIO
+    // \ sandbox
     #[allow(unused_mut)]
     let mut com = &mut config.components;
+    let mut handlers = Vec::new();
+    let states = Arc::new(Mutex::new(States::new(false, false)));
 
     // Node.js
     log::info!("检查 Node.js... Checking Node.js...");
@@ -59,15 +68,36 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
+        states.lock().expect("Failed to lock states").nodejs = true;
     } else {
-        todo!();
+        handlers.push(tokio::spawn(install::install_nodejs(states.clone())));
     }
 
     // MongoDB
+    if com.mongodb.is_installed() {
+        log::info!("MongoDB 已安装，不执行任何操作。 MongoDB is already installed, skip.");
+        let version = com
+            .mongodb
+            .version()
+            .expect("MongoDB should have a version if installed");
+        check_version!(mongodb, version, warn);
+    } else {
+        handlers.push(tokio::spawn(install::install_mongodb()));
+    }
 
     // MinIO
+    if com.minio.is_installed() {
+        log::info!("MinIO 已安装，不执行任何操作。 MinIO is already installed, skip.");
+    } else {
+        handlers.push(tokio::spawn(install::install_minio()));
+    }
 
     // sandbox
+    if com.sandbox.is_installed() {
+        log::info!("sandbox 已安装，不执行任何操作。 sandbox is already installed, skip.");
+    } else {
+        handlers.push(tokio::spawn(install::install_sandbox()));
+    }
 
     // components below depends on Node.js, should wait until it's ready
 
