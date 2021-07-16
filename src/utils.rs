@@ -22,13 +22,13 @@ macro_rules! check_version {
         $crate::version_req!($com).matches($version)
     }};
     (nodejs, $version:expr, warn) => {{
-        let nodejs_version_requirement = $crate::version_req!(nodejs);
-        if !nodejs_version_requirement.matches($version) {
+        let req = $crate::version_req!(nodejs);
+        if !req.matches($version) {
             ::log::warn!(
                 "Hydro 需要 `Node.js {}`，当前版本可能无法正常工作。 \
                 Hydro requires `Node.js {}`, the current version may not work properly.",
-                &nodejs_version_requirement,
-                &nodejs_version_requirement,
+                &req,
+                &req,
             );
             false
         } else {
@@ -36,13 +36,13 @@ macro_rules! check_version {
         }
     }};
     (mongodb, $version:expr, warn) => {{
-        let mongodb_version_requirement = $crate::version_req!(mongodb);
-        if !mongodb_version_requirement.matches($version) {
+        let req = $crate::version_req!(mongodb);
+        if !req.matches($version) {
             ::log::warn!(
                 "Hydro 需要 `MongoDB {}`，当前版本可能无法正常工作。 \
                 Hydro requires `MongoDB {}`, the current version may not work properly.",
-                &mongodb_version_requirement,
-                &mongodb_version_requirement,
+                &req,
+                &req,
             );
             false
         } else {
