@@ -1,3 +1,4 @@
+use derive_more::IsVariant;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -67,7 +68,7 @@ impl ComponentInfo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, IsVariant)]
 pub enum Version {
     Unknown,
     Installed,
@@ -94,24 +95,6 @@ pub enum ConfigError {
 
     #[error("Failed to serialize config, please contact the developer")]
     SerializeError(#[from] toml::ser::Error),
-}
-
-impl Version {
-    pub fn is_unknown(&self) -> bool {
-        matches!(self, Self::Unknown)
-    }
-
-    pub fn is_installed(&self) -> bool {
-        matches!(self, Self::Installed)
-    }
-
-    pub fn is_valid(&self) -> bool {
-        matches!(self, Self::Valid(_))
-    }
-
-    pub fn is_invalid(&self) -> bool {
-        matches!(self, Self::Invalid(_))
-    }
 }
 
 impl Display for Version {

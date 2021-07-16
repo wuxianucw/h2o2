@@ -23,6 +23,7 @@ semver = "1.0"
 duct = "0.13.5"
 futures = "0.3"
 backoff = { version = "0.3", features = ["tokio"] }
+derive_more = "0.99"
 
 [profile.release]
 lto = true
