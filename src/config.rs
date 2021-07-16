@@ -181,8 +181,8 @@ pub async fn load_config() -> Result<Config, ConfigError> {
 
     fs::read_to_string(config_path)
         .await
-        .map_err(|e| ConfigError::ReadError(e))
-        .and_then(|text| toml::from_str(&text).map_err(|e| ConfigError::DeserializeError(e)))
+        .map_err(ConfigError::ReadError)
+        .and_then(|text| toml::from_str(&text).map_err(ConfigError::DeserializeError))
 }
 
 pub async fn save_config(config: &Config) -> Result<(), ConfigError> {
@@ -197,5 +197,5 @@ pub async fn save_config(config: &Config) -> Result<(), ConfigError> {
         },
     )
     .await
-    .map_err(|e| ConfigError::WriteError(e))
+    .map_err(ConfigError::WriteError)
 }
