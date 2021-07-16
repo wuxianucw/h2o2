@@ -1,0 +1,27 @@
+[package]
+name = "h2o2"
+version = "0.1.0"
+authors = ["wuxianucw <i@ucw.moe>"]
+description = "Another powerful tool for Hydro(hydro.js.org)"
+license = "MIT"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+thiserror = "1.0"
+clap = "3.0.0-beta.2"
+tokio = { version = "1", features = ["full"] }
+reqwest = "0.11"
+log = "0.4"
+env_logger = "0.8.4"
+dirs = "3.0"
+toml = "0.5"
+serde = { version = "1.0", features = ["derive"] }
+semver = "1.0"
+duct = "0.13.5"
+futures = "0.3"
+
+[profile.release]
+lto = true
