@@ -195,5 +195,7 @@ pub async fn save_config(config: &Config) -> Result<(), ConfigError> {
                 return Err(ConfigError::SerializeError(e));
             }
         },
-    ).await.map_err(|e| ConfigError::WriteError(e))
+    )
+    .await
+    .map_err(|e| ConfigError::WriteError(e))
 }

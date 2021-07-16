@@ -8,20 +8,20 @@ pub fn debug_output(output: &Output) {
 
 #[macro_export]
 macro_rules! version_req {
-    (nodejs) => ({
+    (nodejs) => {
         ::semver::VersionReq::parse(">=14").expect("Incorrect version requirement pattern")
-    });
-    (mongodb) => ({
+    };
+    (mongodb) => {
         ::semver::VersionReq::parse(">=4").expect("Incorrect version requirement pattern")
-    });
+    };
 }
 
 #[macro_export]
 macro_rules! check_version {
-    ($com:tt, $version:expr) => ({
+    ($com:tt, $version:expr) => {{
         $crate::version_req!($com).matches($version)
-    });
-    (nodejs, $version:expr, warn) => ({
+    }};
+    (nodejs, $version:expr, warn) => {{
         let nodejs_version_requirement = $crate::version_req!(nodejs);
         if !nodejs_version_requirement.matches($version) {
             ::log::warn!(
@@ -31,9 +31,11 @@ macro_rules! check_version {
                 &nodejs_version_requirement,
             );
             false
-        } else { true }
-    });
-    (mongodb, $version:expr, warn) => ({
+        } else {
+            true
+        }
+    }};
+    (mongodb, $version:expr, warn) => {{
         let mongodb_version_requirement = $crate::version_req!(mongodb);
         if !mongodb_version_requirement.matches($version) {
             ::log::warn!(
@@ -43,6 +45,8 @@ macro_rules! check_version {
                 &mongodb_version_requirement,
             );
             false
-        } else { true }
-    });
+        } else {
+            true
+        }
+    }};
 }

@@ -4,7 +4,12 @@ use duct::cmd;
 use semver::Version;
 use std::{env, io::ErrorKind};
 
-use crate::{check_version, config::{self, Config, ConfigError}, show, utils::debug_output};
+use crate::{
+    check_version,
+    config::{self, Config, ConfigError},
+    show,
+    utils::debug_output,
+};
 
 #[derive(Clap, Debug)]
 #[clap(version = "0.1.0", author = "wuxianucw <i@ucw.moe>")]

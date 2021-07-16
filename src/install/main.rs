@@ -1,7 +1,10 @@
 use anyhow::Result;
 use clap::Clap;
 
-use crate::{check_version, config::{self, Config, ConfigError}};
+use crate::{
+    check_version,
+    config::{self, Config, ConfigError},
+};
 
 #[derive(Clap, Debug)]
 #[clap(version = "0.1.0", author = "wuxianucw <i@ucw.moe>")]
@@ -46,7 +49,10 @@ pub async fn main(args: Args) -> Result<()> {
     log::info!("检查 Node.js... Checking Node.js...");
     if com.nodejs.is_installed() {
         log::info!("Node.js 已安装，不执行任何操作。 Node.js is already installed, skip.");
-        let version = com.nodejs.version().expect("Node.js should have a version if installed");
+        let version = com
+            .nodejs
+            .version()
+            .expect("Node.js should have a version if installed");
         check_version!(nodejs, version, warn);
         log::info!(
             "若需要 H2O2 安装一个推荐版本的 Node.js，请删除系统中已存在的版本并重新运行 H2O2。 \
