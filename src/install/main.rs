@@ -45,8 +45,7 @@ pub async fn main(args: Args) -> Result<()> {
     };
 
     // find out the components that need installing, and then execute them together
-    #[allow(unused_mut)]
-    let mut com = &mut config.components;
+    let com = &mut config.components;
     let mut tasks = Vec::new();
     let states = Arc::new(Mutex::new(States::new(
         false, false, false, false, false, false,
