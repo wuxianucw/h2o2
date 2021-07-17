@@ -26,7 +26,7 @@ pub enum ErrorKind {
     Other(String),
 }
 
-#[derive(Debug, Display, Copy, Clone)]
+#[derive(Debug, Display, Copy, Clone, PartialEq, Eq)]
 pub enum Com {
     #[display(fmt = "Node.js")]
     NodeJS,
@@ -48,6 +48,26 @@ pub enum Com {
 pub enum Signal {
     Ready(Com),
     Failed(Com),
+}
+
+macro_rules! wait_for_components {
+    ($rx:expr, $($com:expr),+ $(,)?) => {{
+        let mut coms = vec![$($com),*];
+        while !coms.is_empty() {
+            match $rx.recv().await.map_err(ErrorKind::RecvError)? {
+                Signal::Ready(com) => {
+                    if let Some(pos) = coms.iter().position(|x| *x == com) {
+                        coms.swap_remove(pos);
+                    }
+                }
+                Signal::Failed(com) => {
+                    if let Some(_) = coms.iter().position(|x| *x == com) {
+                        return Err(ErrorKind::DependencyError(com));
+                    }
+                }
+            }
+        }
+    }};
 }
 
 pub type Result<T> = StdResult<T, Error>;
@@ -86,27 +106,19 @@ async fn install_sandbox() -> InstallResult<ComponentInfo> {
 }
 
 async fn install_yarn(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
-    loop {
-        match rx.recv().await.map_err(ErrorKind::RecvError)? {
-            Signal::Ready(com) => {
-                if matches!(com, Com::NodeJS) {
-                    break;
-                }
-            }
-            Signal::Failed(com) => {
-                if matches!(com, Com::NodeJS) {
-                    return Err(ErrorKind::DependencyError(com));
-                }
-            }
-        }
-    }
+    wait_for_components!(rx, Com::NodeJS);
+
     todo!();
 }
 
-async fn install_pm2(_rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
+async fn install_pm2(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
+    wait_for_components!(rx, Com::NodeJS);
+
     todo!();
 }
 
-async fn install_hydro(_rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
+async fn install_hydro(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
+    wait_for_components!(rx, Com::NodeJS, Com::Yarn);
+
     todo!();
 }
