@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use crate::{
     check_version,
     config::{self, Config, ConfigError},
-    install::{install, Com, States},
+    install::{install, Com, State, States},
 };
 
 #[derive(Clap, Debug)]
@@ -47,9 +47,7 @@ pub async fn main(args: Args) -> Result<()> {
     // find out the components that need installing, and then execute them together
     let com = &mut config.components;
     let mut tasks = Vec::new();
-    let states = Arc::new(Mutex::new(States::new(
-        false, false, false, false, false, false,
-    )));
+    let states = Arc::new(Mutex::new(States::default()));
 
     // Node.js
     log::info!("检查 Node.js... Checking Node.js...");
@@ -65,7 +63,7 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
-        states.lock().expect("Failed to lock states").nodejs = true;
+        states.lock().expect("Failed to lock states").nodejs = State::Ready;
     } else {
         tasks.push(Com::NodeJS);
     }
@@ -78,7 +76,7 @@ pub async fn main(args: Args) -> Result<()> {
             .version()
             .expect("MongoDB should have a version if installed");
         check_version!(mongodb, version, warn);
-        states.lock().expect("Failed to lock states").mongodb = true;
+        states.lock().expect("Failed to lock states").mongodb = State::Ready;
     } else {
         tasks.push(Com::MongoDB);
     }
@@ -86,7 +84,7 @@ pub async fn main(args: Args) -> Result<()> {
     // MinIO
     if com.minio.is_installed() {
         log::info!("MinIO 已安装，不执行任何操作。 MinIO is already installed, skip.");
-        states.lock().expect("Failed to lock states").minio = true;
+        states.lock().expect("Failed to lock states").minio = State::Ready;
     } else {
         tasks.push(Com::MinIO);
     }
@@ -94,7 +92,7 @@ pub async fn main(args: Args) -> Result<()> {
     // sandbox
     if com.sandbox.is_installed() {
         log::info!("sandbox 已安装，不执行任何操作。 sandbox is already installed, skip.");
-        states.lock().expect("Failed to lock states").sandbox = true;
+        states.lock().expect("Failed to lock states").sandbox = State::Ready;
     } else {
         tasks.push(Com::Sandbox);
     }
@@ -105,7 +103,7 @@ pub async fn main(args: Args) -> Result<()> {
     // yarn
     if com.yarn.is_installed() {
         log::info!("Yarn 已安装，不执行任何操作。 Yarn is already installed, skip.");
-        states.lock().expect("Failed to lock states").yarn = true;
+        states.lock().expect("Failed to lock states").yarn = State::Ready;
     } else {
         tasks.push(Com::Yarn);
     }
@@ -113,7 +111,7 @@ pub async fn main(args: Args) -> Result<()> {
     // pm2
     if com.pm2.is_installed() {
         log::info!("PM2 已安装，不执行任何操作。 PM2 is already installed, skip.");
-        states.lock().expect("Failed to lock states").pm2 = true;
+        states.lock().expect("Failed to lock states").pm2 = State::Ready;
     } else {
         tasks.push(Com::PM2);
     }
@@ -131,7 +129,7 @@ pub async fn main(args: Args) -> Result<()> {
 
     let mut tasks = tasks
         .into_iter()
-        .map(|com| install(com, states.clone()))
+        .map(|com| install(com, &states))
         .collect::<FuturesUnordered<_>>();
 
     while let Some(res) = tasks.next().await {
@@ -139,6 +137,13 @@ pub async fn main(args: Args) -> Result<()> {
             Ok((com_id, com_info)) => {
                 log::info!("OK: {} {}", &com_id, com_info.to_show_format());
                 *com.borrow_mut_by_com(com_id) = com_info;
+                if let Some(state) = states
+                    .lock()
+                    .expect("Failed to lock states")
+                    .borrow_mut_by_com(com_id)
+                {
+                    *state = State::Ready;
+                }
             }
             Err(e) => {
                 log::error!("安装 {} 失败！", e.com);
