@@ -1,7 +1,7 @@
 use derive_more::{Constructor, Display, IsVariant};
-use tokio::sync::broadcast::{Receiver, error::RecvError};
 use std::result::Result as StdResult;
 use thiserror::Error as ThisError;
+use tokio::sync::broadcast::{error::RecvError, Receiver};
 
 pub use crate::config::ComponentInfo;
 
@@ -16,7 +16,6 @@ pub struct Error {
 #[derive(Debug, Display, ThisError)]
 pub enum ErrorKind {
     // TODO: more error kind
-
     #[display(fmt = "{}", _0)]
     RecvError(#[from] RecvError),
 
@@ -93,12 +92,12 @@ async fn install_yarn(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> 
                 if matches!(com, Com::NodeJS) {
                     break;
                 }
-            },
+            }
             Signal::Failed(com) => {
                 if matches!(com, Com::NodeJS) {
                     return Err(ErrorKind::DependencyError(com));
                 }
-            },
+            }
         }
     }
     todo!();
