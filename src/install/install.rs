@@ -1,8 +1,6 @@
-use derive_more::{Constructor, Display};
-use std::{
-    result::Result as StdResult,
-    sync::{Arc, Mutex},
-};
+use derive_more::{Constructor, Display, IsVariant};
+use tokio::sync::broadcast::{Receiver, error::RecvError};
+use std::result::Result as StdResult;
 use thiserror::Error as ThisError;
 
 pub use crate::config::ComponentInfo;
@@ -11,12 +9,20 @@ pub use crate::config::ComponentInfo;
 #[error("Failed to install {com}: {kind}")]
 pub struct Error {
     pub com: Com,
+    #[source]
     pub kind: ErrorKind,
 }
 
-#[derive(Debug, Display)]
+#[derive(Debug, Display, ThisError)]
 pub enum ErrorKind {
     // TODO: more error kind
+
+    #[display(fmt = "{}", _0)]
+    RecvError(#[from] RecvError),
+
+    #[display(fmt = "require {}", _0)]
+    DependencyError(Com),
+
     #[display(fmt = "{}", _0)]
     Other(String),
 }
@@ -39,67 +45,24 @@ pub enum Com {
     Hydro,
 }
 
-#[derive(Default)]
-pub struct States {
-    pub nodejs: State,
-    pub mongodb: State,
-    pub minio: State,
-    pub sandbox: State,
-    pub yarn: State,
-    pub pm2: State,
-}
-
-#[derive(Debug, Display)]
-pub enum State {
-    Pending,
-    Ready,
-    Failed,
-}
-
-impl Default for State {
-    fn default() -> State {
-        Self::Pending
-    }
-}
-
-impl States {
-    pub fn borrow_by_com(&self, com: Com) -> Option<&State> {
-        match com {
-            Com::NodeJS => Some(&self.nodejs),
-            Com::MongoDB => Some(&self.mongodb),
-            Com::MinIO => Some(&self.minio),
-            Com::Sandbox => Some(&self.sandbox),
-            Com::Yarn => Some(&self.yarn),
-            Com::PM2 => Some(&self.pm2),
-            _ => None,
-        }
-    }
-
-    pub fn borrow_mut_by_com(&mut self, com: Com) -> Option<&mut State> {
-        match com {
-            Com::NodeJS => Some(&mut self.nodejs),
-            Com::MongoDB => Some(&mut self.mongodb),
-            Com::MinIO => Some(&mut self.minio),
-            Com::Sandbox => Some(&mut self.sandbox),
-            Com::Yarn => Some(&mut self.yarn),
-            Com::PM2 => Some(&mut self.pm2),
-            _ => None,
-        }
-    }
+#[derive(Debug, IsVariant, Clone)]
+pub enum Signal {
+    Ready(Com),
+    Failed(Com),
 }
 
 pub type Result<T> = StdResult<T, Error>;
 
-pub async fn install(com: Com, states: &Arc<Mutex<States>>) -> Result<(Com, ComponentInfo)> {
+pub async fn install(com: Com, rx: Option<Receiver<Signal>>) -> Result<(Com, ComponentInfo)> {
     match com {
         // must await each, because `impl Future<Output = T>` is an opaque type
         Com::NodeJS => install_nodejs().await,
         Com::MongoDB => install_mongodb().await,
         Com::MinIO => install_minio().await,
         Com::Sandbox => install_sandbox().await,
-        Com::Yarn => install_yarn(states.clone()).await,
-        Com::PM2 => install_pm2(states.clone()).await,
-        Com::Hydro => install_hydro(states.clone()).await,
+        Com::Yarn => install_yarn(rx.expect("Receiver cannot be `None`")).await,
+        Com::PM2 => install_pm2(rx.expect("Receiver cannot be `None`")).await,
+        Com::Hydro => install_hydro(rx.expect("Receiver cannot be `None`")).await,
     }
     .map(|ok| (com, ok))
     .map_err(|e| Error::new(com, e))
@@ -123,14 +86,28 @@ async fn install_sandbox() -> InstallResult<ComponentInfo> {
     todo!();
 }
 
-async fn install_yarn(_states: Arc<Mutex<States>>) -> InstallResult<ComponentInfo> {
+async fn install_yarn(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
+    loop {
+        match rx.recv().await.map_err(ErrorKind::RecvError)? {
+            Signal::Ready(com) => {
+                if matches!(com, Com::NodeJS) {
+                    break;
+                }
+            },
+            Signal::Failed(com) => {
+                if matches!(com, Com::NodeJS) {
+                    return Err(ErrorKind::DependencyError(com));
+                }
+            },
+        }
+    }
     todo!();
 }
 
-async fn install_pm2(_states: Arc<Mutex<States>>) -> InstallResult<ComponentInfo> {
+async fn install_pm2(_rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
     todo!();
 }
 
-async fn install_hydro(_states: Arc<Mutex<States>>) -> InstallResult<ComponentInfo> {
+async fn install_hydro(_rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
     todo!();
 }

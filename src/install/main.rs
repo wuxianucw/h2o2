@@ -1,12 +1,12 @@
 use anyhow::Result;
 use clap::Clap;
 use futures::{stream::FuturesUnordered, StreamExt};
-use std::sync::{Arc, Mutex};
+use tokio::sync::broadcast;
 
 use crate::{
     check_version,
     config::{self, Config, ConfigError},
-    install::{install, Com, State, States},
+    install::{install, Com, Signal},
 };
 
 #[derive(Clap, Debug)]
@@ -47,7 +47,37 @@ pub async fn main(args: Args) -> Result<()> {
     // find out the components that need installing, and then execute them together
     let com = &mut config.components;
     let mut tasks = Vec::new();
-    let states = Arc::new(Mutex::new(States::default()));
+    let (tx, _) = broadcast::channel(16);
+
+    // Hack: the order is vital, because we must make sure that `tx.subcribe()` is called
+    // before `tx.send()`
+
+    // Hydro
+    if com.hydro.is_installed() {
+        log::info!("Hydro 已安装，不执行任何操作。 Hydro is already installed, skip.");
+        log::info!(
+            "若需要检查更新 Hydro，请运行 `h2o2 check`。 \
+            If you need to check and update Hydro, please run `h2o2 check`."
+        );
+    } else {
+        tasks.push((Com::Hydro, Some(tx.subscribe())));
+    }
+
+    // yarn
+    if com.yarn.is_installed() {
+        log::info!("Yarn 已安装，不执行任何操作。 Yarn is already installed, skip.");
+        tx.send(Signal::Ready(Com::Yarn)).expect("Failed to broadcast install result");
+    } else {
+        tasks.push((Com::Yarn, Some(tx.subscribe())));
+    }
+
+    // pm2
+    if com.pm2.is_installed() {
+        log::info!("PM2 已安装，不执行任何操作。 PM2 is already installed, skip.");
+        tx.send(Signal::Ready(Com::PM2)).expect("Failed to broadcast install result");
+    } else {
+        tasks.push((Com::PM2, Some(tx.subscribe())));
+    }
 
     // Node.js
     log::info!("检查 Node.js... Checking Node.js...");
@@ -63,9 +93,9 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
-        states.lock().expect("Failed to lock states").nodejs = State::Ready;
+        tx.send(Signal::Ready(Com::NodeJS)).expect("Failed to broadcast install result");
     } else {
-        tasks.push(Com::NodeJS);
+        tasks.push((Com::NodeJS, None));
     }
 
     // MongoDB
@@ -76,60 +106,30 @@ pub async fn main(args: Args) -> Result<()> {
             .version()
             .expect("MongoDB should have a version if installed");
         check_version!(mongodb, version, warn);
-        states.lock().expect("Failed to lock states").mongodb = State::Ready;
+        tx.send(Signal::Ready(Com::MongoDB)).expect("Failed to broadcast install result");
     } else {
-        tasks.push(Com::MongoDB);
+        tasks.push((Com::MongoDB, None));
     }
 
     // MinIO
     if com.minio.is_installed() {
         log::info!("MinIO 已安装，不执行任何操作。 MinIO is already installed, skip.");
-        states.lock().expect("Failed to lock states").minio = State::Ready;
+        tx.send(Signal::Ready(Com::MinIO)).expect("Failed to broadcast install result");
     } else {
-        tasks.push(Com::MinIO);
+        tasks.push((Com::MinIO, None));
     }
 
     // sandbox
     if com.sandbox.is_installed() {
         log::info!("sandbox 已安装，不执行任何操作。 sandbox is already installed, skip.");
-        states.lock().expect("Failed to lock states").sandbox = State::Ready;
+        tx.send(Signal::Ready(Com::Sandbox)).expect("Failed to broadcast install result");
     } else {
-        tasks.push(Com::Sandbox);
-    }
-
-    // components below depends on Node.js, should wait until it's ready
-    // this depends on shared states
-
-    // yarn
-    if com.yarn.is_installed() {
-        log::info!("Yarn 已安装，不执行任何操作。 Yarn is already installed, skip.");
-        states.lock().expect("Failed to lock states").yarn = State::Ready;
-    } else {
-        tasks.push(Com::Yarn);
-    }
-
-    // pm2
-    if com.pm2.is_installed() {
-        log::info!("PM2 已安装，不执行任何操作。 PM2 is already installed, skip.");
-        states.lock().expect("Failed to lock states").pm2 = State::Ready;
-    } else {
-        tasks.push(Com::PM2);
-    }
-
-    // Hydro
-    if com.hydro.is_installed() {
-        log::info!("Hydro 已安装，不执行任何操作。 Hydro is already installed, skip.");
-        log::info!(
-            "若需要检查更新 Hydro，请运行 `h2o2 check`。 \
-            If you need to check and update Hydro, please run `h2o2 check`."
-        );
-    } else {
-        tasks.push(Com::Hydro);
+        tasks.push((Com::Sandbox, None));
     }
 
     let mut tasks = tasks
         .into_iter()
-        .map(|com| install(com, &states))
+        .map(|(com, rx)| install(com, rx))
         .collect::<FuturesUnordered<_>>();
 
     while let Some(res) = tasks.next().await {
@@ -137,16 +137,10 @@ pub async fn main(args: Args) -> Result<()> {
             Ok((com_id, com_info)) => {
                 log::info!("OK: {} {}", &com_id, com_info.to_show_format());
                 *com.borrow_mut_by_com(com_id) = com_info;
-                if let Some(state) = states
-                    .lock()
-                    .expect("Failed to lock states")
-                    .borrow_mut_by_com(com_id)
-                {
-                    *state = State::Ready;
-                }
+                tx.send(Signal::Ready(com_id)).expect("Failed to broadcast install result");
             }
             Err(e) => {
-                log::error!("安装 {} 失败！", e.com);
+                log::error!("安装 {} 失败！", e.com); // English is no need because the error message is already in English
                 log::error!("{}", e);
             }
         }
