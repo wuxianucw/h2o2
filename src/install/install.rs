@@ -52,7 +52,7 @@ pub enum Signal {
 
 macro_rules! wait_for_components {
     ($rx:expr, $($com:expr),+ $(,)?) => {{
-        let mut coms = vec![$($com),*];
+        let mut coms = vec![$($com),+];
         while !coms.is_empty() {
             match $rx.recv().await.map_err(ErrorKind::RecvError)? {
                 Signal::Ready(com) => {
