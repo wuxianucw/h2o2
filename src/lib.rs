@@ -5,3 +5,5 @@ pub mod install;
 pub mod log;
 pub mod show;
 pub mod utils;
+
+pub use install::Com;

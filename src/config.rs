@@ -7,6 +7,8 @@ use std::{
 use thiserror::Error;
 use tokio::{fs, io};
 
+pub use crate::Com;
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Config {
     /// components infomation
@@ -37,6 +39,32 @@ pub struct Components {
 
     /// Hydro version
     pub hydro: ComponentInfo,
+}
+
+impl Components {
+    pub fn borrow_by_com(&self, com: Com) -> &ComponentInfo {
+        match com {
+            Com::NodeJS => &self.nodejs,
+            Com::MongoDB => &self.mongodb,
+            Com::MinIO => &self.minio,
+            Com::Sandbox => &self.sandbox,
+            Com::Yarn => &self.yarn,
+            Com::PM2 => &self.pm2,
+            Com::Hydro => &self.hydro,
+        }
+    }
+
+    pub fn borrow_mut_by_com(&mut self, com: Com) -> &mut ComponentInfo {
+        match com {
+            Com::NodeJS => &mut self.nodejs,
+            Com::MongoDB => &mut self.mongodb,
+            Com::MinIO => &mut self.minio,
+            Com::Sandbox => &mut self.sandbox,
+            Com::Yarn => &mut self.yarn,
+            Com::PM2 => &mut self.pm2,
+            Com::Hydro => &mut self.hydro,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -81,10 +109,16 @@ pub struct Profile {}
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
-    #[error("Config file does not exist, please run `h2o2 detect` or `h2o2 install` first")]
+    #[error(
+        "配置文件不存在，请先运行 `h2o2 detect` 或 `h2o2 install`。 \
+        Config file does not exist, please run `h2o2 detect` or `h2o2 install` first."
+    )]
     FileNotExist,
 
-    #[error("Failed to read config file, consider running `h2o2 detect` to fix")]
+    #[error(
+        "读取配置文件失败，请尝试运行 `h2o2 detect`。 \
+        Failed to read config file, consider running `h2o2 detect` to fix."
+    )]
     ReadError(#[source] io::Error),
 
     #[error("Failed to write config file")]
