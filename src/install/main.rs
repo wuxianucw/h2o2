@@ -63,20 +63,18 @@ pub async fn main(args: Args) -> Result<()> {
         tasks.push((Com::Hydro, Some(tx.subscribe())));
     }
 
-    // yarn
+    // Yarn
     if com.yarn.is_installed() {
         log::info!("Yarn 已安装，不执行任何操作。 Yarn is already installed, skip.");
-        tx.send(Signal::Ready(Com::Yarn))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::Yarn)); // Note: `tx.send()` may fail if there is no receiver
     } else {
         tasks.push((Com::Yarn, Some(tx.subscribe())));
     }
 
-    // pm2
+    // PM2
     if com.pm2.is_installed() {
         log::info!("PM2 已安装，不执行任何操作。 PM2 is already installed, skip.");
-        tx.send(Signal::Ready(Com::PM2))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::PM2));
     } else {
         tasks.push((Com::PM2, Some(tx.subscribe())));
     }
@@ -95,8 +93,7 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
-        tx.send(Signal::Ready(Com::NodeJS))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::NodeJS));
     } else {
         tasks.push((Com::NodeJS, None));
     }
@@ -109,8 +106,7 @@ pub async fn main(args: Args) -> Result<()> {
             .version()
             .expect("MongoDB should have a version if installed");
         check_version!(mongodb, version, warn);
-        tx.send(Signal::Ready(Com::MongoDB))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::MongoDB));
     } else {
         tasks.push((Com::MongoDB, None));
     }
@@ -118,8 +114,7 @@ pub async fn main(args: Args) -> Result<()> {
     // MinIO
     if com.minio.is_installed() {
         log::info!("MinIO 已安装，不执行任何操作。 MinIO is already installed, skip.");
-        tx.send(Signal::Ready(Com::MinIO))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::MinIO));
     } else {
         tasks.push((Com::MinIO, None));
     }
@@ -127,8 +122,7 @@ pub async fn main(args: Args) -> Result<()> {
     // sandbox
     if com.sandbox.is_installed() {
         log::info!("sandbox 已安装，不执行任何操作。 sandbox is already installed, skip.");
-        tx.send(Signal::Ready(Com::Sandbox))
-            .expect("Failed to broadcast install result");
+        let _ = tx.send(Signal::Ready(Com::Sandbox));
     } else {
         tasks.push((Com::Sandbox, None));
     }
@@ -143,8 +137,7 @@ pub async fn main(args: Args) -> Result<()> {
             Ok((com_id, com_info)) => {
                 log::info!("OK: {} {}", &com_id, com_info.to_show_format());
                 *com.borrow_mut_by_com(com_id) = com_info;
-                tx.send(Signal::Ready(com_id))
-                    .expect("Failed to broadcast install result");
+                let _ = tx.send(Signal::Ready(com_id));
             }
             Err(e) => {
                 log::error!("安装 {} 失败！", e.com); // English is no need because the error message is already in English
