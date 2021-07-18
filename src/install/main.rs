@@ -142,6 +142,7 @@ pub async fn main(args: Args) -> Result<()> {
             Err(e) => {
                 log::error!("安装 {} 失败！", e.com); // English is no need because the error message is already in English
                 log::error!("{}", e);
+                let _ = tx.send(Signal::Failed(e.com));
             }
         }
     }
