@@ -54,10 +54,10 @@ pub enum Signal {
 }
 
 macro_rules! wait_for_components {
-    ($rx:expr, $($com:expr),+ $(,)?) => {{
-        let mut coms = vec![$($com),+];
+    ($com:expr, $rx:expr, $($dep_com:expr),+ $(,)?) => {{
+        let mut coms = vec![$($dep_com),+];
         while !coms.is_empty() {
-            match $rx.recv().await.map_err(ErrorKind::RecvError)? {
+            match $rx.recv().await.map_err(|e| Error::new($com, ErrorKind::RecvError(e)))? {
                 Signal::Ready(com) => {
                     if let Some(pos) = coms.iter().position(|x| *x == com) {
                         coms.swap_remove(pos);
@@ -65,7 +65,7 @@ macro_rules! wait_for_components {
                 }
                 Signal::Failed(com) => {
                     if let Some(_) = coms.iter().position(|x| *x == com) {
-                        return Err(ErrorKind::DependencyError(com));
+                        return Err(Error::new($com, ErrorKind::DependencyError(com)));
                     }
                 }
             }
@@ -82,9 +82,21 @@ pub async fn install(com: Com, rx: Option<Receiver<Signal>>) -> Result<(Com, Com
         Com::MongoDB => install_mongodb().await,
         Com::MinIO => install_minio().await,
         Com::Sandbox => install_sandbox().await,
-        Com::Yarn => install_yarn(rx.expect("Receiver cannot be `None`")).await,
-        Com::PM2 => install_pm2(rx.expect("Receiver cannot be `None`")).await,
-        Com::Hydro => install_hydro(rx.expect("Receiver cannot be `None`")).await,
+        Com::Yarn => {
+            let mut rx = rx.expect("Receiver cannot be `None`");
+            wait_for_components!(com, rx, Com::NodeJS);
+            install_yarn().await
+        }
+        Com::PM2 => {
+            let mut rx = rx.expect("Receiver cannot be `None`");
+            wait_for_components!(com, rx, Com::NodeJS);
+            install_pm2().await
+        }
+        Com::Hydro => {
+            let mut rx = rx.expect("Receiver cannot be `None`");
+            wait_for_components!(com, rx, Com::NodeJS, Com::Yarn);
+            install_hydro().await
+        }
     }
     .map(|ok| (com, ok))
     .map_err(|e| Error::new(com, e))
@@ -134,9 +146,7 @@ async fn install_sandbox() -> InstallResult<ComponentInfo> {
     Err(ErrorKind::Other("not yet implemented".to_owned()))
 }
 
-async fn install_yarn(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
-    wait_for_components!(rx, Com::NodeJS);
-
+async fn install_yarn() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Yarn... Start to install Yarn...");
 
     time::sleep(time::Duration::from_secs(20)).await;
@@ -144,9 +154,7 @@ async fn install_yarn(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> 
     Err(ErrorKind::Other("not yet implemented".to_owned()))
 }
 
-async fn install_pm2(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
-    wait_for_components!(rx, Com::NodeJS);
-
+async fn install_pm2() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 PM2... Start to install PM2...");
 
     time::sleep(time::Duration::from_secs(5)).await;
@@ -154,9 +162,7 @@ async fn install_pm2(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
     Err(ErrorKind::Other("not yet implemented".to_owned()))
 }
 
-async fn install_hydro(mut rx: Receiver<Signal>) -> InstallResult<ComponentInfo> {
-    wait_for_components!(rx, Com::NodeJS, Com::Yarn);
-
+async fn install_hydro() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Hydro... Start to install Hydro...");
 
     time::sleep(time::Duration::from_secs(5)).await;
