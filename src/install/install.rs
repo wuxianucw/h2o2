@@ -6,8 +6,8 @@ use tokio::{
     time,
 };
 
-pub use crate::config::ComponentInfo;
 use super::helper::*;
+pub use crate::config::ComponentInfo;
 
 #[derive(ThisError, Debug, Constructor)]
 #[error("Failed to install {com}: {kind}")]
