@@ -7,6 +7,7 @@ use tokio::{
 };
 
 pub use crate::config::ComponentInfo;
+use super::helper::*;
 
 #[derive(ThisError, Debug, Constructor)]
 #[error("Failed to install {com}: {kind}")]
@@ -24,6 +25,9 @@ pub enum ErrorKind {
 
     #[display(fmt = "require {}", _0)]
     DependencyError(Com),
+
+    #[display(fmt = "your platform is not supported yet")]
+    PlatformNotSupported,
 
     #[display(fmt = "{}", _0)]
     Other(String),
@@ -107,41 +111,7 @@ type InstallResult<T> = StdResult<T, ErrorKind>;
 async fn install_nodejs() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Node.js... Start to install Node.js...");
 
-    // TODO: spilt
-    #[cfg(windows)]
-    #[cfg(target_arch = "x86")]
-    let (postfix, shasum256) = (
-        "-x86.msi",
-        "b5bea503f45058a6acd0900bfe7e52deba12dcc1769808eece93b42bce40c7d8",
-    );
-
-    #[cfg(windows)]
-    #[cfg(target_arch = "x86_64")]
-    let (postfix, shasum256) = (
-        "-x64.msi",
-        "964e36aa518b17ab04c3a49a0f5641a6bd8a9dc2b57c18272b6f90edf026f5dc",
-    );
-
-    #[cfg(target_os = "linux")]
-    #[cfg(target_arch = "x86_64")]
-    let (postfix, shasum256) = (
-        "-linux-x64.tar.gz",
-        "7ef1f7dae52a3ec99cda9cf29e655bc6e61c2c48e496532d83d9f17ea108d5d8",
-    );
-
-    #[cfg(target_os = "linux")]
-    #[cfg(target_arch = "aarch64")]
-    let (postfix, shasum256) = (
-        "-linux-x64.tar.gz",
-        "7ef1f7dae52a3ec99cda9cf29e655bc6e61c2c48e496532d83d9f17ea108d5d8",
-    );
-
-    #[cfg(target_os = "linux")]
-    #[cfg(target_arch = "arm")]
-    let (postfix, shasum256) = (
-        "-linux-arm64.tar.gz",
-        "784ede0c9faa4a71d77659918052cca39981138edde2c799ffdf2b4695c08544",
-    );
+    let (postfix, shasum256) = nodejs::get_binary_info();
 
     log::info!("{} {}", postfix, shasum256);
 

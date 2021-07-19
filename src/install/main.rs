@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Clap;
 use futures::{stream::FuturesUnordered, StreamExt};
 use tokio::sync::broadcast;
@@ -19,6 +19,11 @@ pub struct Args {
 }
 
 pub async fn main(args: Args) -> Result<()> {
+    // FIXME: support macos
+    if cfg!(target_os = "macos") {
+        bail!("Platform is not supported");
+    }
+
     let mut config = if args.no_config {
         log::info!("当前模式将不加载配置文件。 Skipped config loading.");
         // always reinstall sandbox
