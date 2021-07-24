@@ -384,9 +384,11 @@ dependencies = [
  "ring",
  "semver 1.0.3",
  "serde",
+ "tempfile",
  "thiserror",
  "tokio",
  "toml",
+ "url",
 ]
 
 [[package]]
