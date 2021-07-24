@@ -29,6 +29,9 @@ pub enum ErrorKind {
     #[display(fmt = "your platform is not supported yet")]
     PlatformNotSupported,
 
+    #[display(fmt = "no available source")]
+    NoAvailableSource,
+
     #[display(fmt = "{}", _0)]
     Other(String),
 }
@@ -111,9 +114,14 @@ type InstallResult<T> = StdResult<T, ErrorKind>;
 async fn install_nodejs() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Node.js... Start to install Node.js...");
 
+    log::info!("[Node.js] 寻找最快的下载源... Finding the fastest download source...");
+    let dist = nodejs::determine_mirror()
+        .await
+        .ok_or(ErrorKind::NoAvailableSource)?;
     let (postfix, shasum256) = nodejs::get_binary_info();
+    let url = format!("{}/v14.17.3/node-v14.17.3{}", &dist, postfix);
 
-    log::info!("{} {}", postfix, shasum256);
+    log::info!("{} {}", &url, shasum256);
 
     time::sleep(time::Duration::from_secs(10)).await;
 
