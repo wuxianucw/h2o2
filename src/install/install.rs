@@ -118,7 +118,7 @@ async fn install_nodejs() -> InstallResult<ComponentInfo> {
     let dist = nodejs::determine_mirror()
         .await
         .ok_or(ErrorKind::NoAvailableSource)?;
-    let (postfix, shasum256) = nodejs::get_binary_info();
+    let (postfix, shasum256) = nodejs::BIN_INFO;
     let url = format!("{}/v14.17.3/node-v14.17.3{}", &dist, postfix);
 
     log::info!("{} {}", &url, shasum256);
@@ -131,6 +131,11 @@ async fn install_nodejs() -> InstallResult<ComponentInfo> {
 async fn install_mongodb() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 MongoDB... Start to install MongoDB...");
 
+    if cfg!(target_arch = "x86") {
+        log::error!("[MongoDB] x86 架构不受支持。 The x86 architecture is not supported.");
+        return Err(ErrorKind::PlatformNotSupported);
+    }
+
     time::sleep(time::Duration::from_secs(20)).await;
 
     Err(ErrorKind::Other("not yet implemented".to_owned()))
@@ -138,6 +143,20 @@ async fn install_mongodb() -> InstallResult<ComponentInfo> {
 
 async fn install_minio() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 MinIO... Start to install MinIO...");
+
+    if cfg!(target_arch = "x86") {
+        log::error!("[MinIO] x86 架构不受支持。 The x86 architecture is not supported.");
+        return Err(ErrorKind::PlatformNotSupported);
+    }
+
+    log::info!("[MinIO] 寻找最快的下载源... Finding the fastest download source...");
+    let dist = minio::determine_mirror()
+        .await
+        .ok_or(ErrorKind::NoAvailableSource)?;
+    let file = minio::BIN_INFO;
+    let url = format!("{}{}", &dist, file);
+
+    log::info!("{}", &url);
 
     time::sleep(time::Duration::from_secs(5)).await;
 
