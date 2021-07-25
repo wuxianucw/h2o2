@@ -39,17 +39,19 @@ pub fn get_binary_info() -> (&'static str, &'static str) {
 
 #[derive(Default, PartialEq, Eq)]
 struct TestResult {
-    pub error: u8,
+    pub error: u32,
     pub total: Duration,
 }
 
 impl TestResult {
+    const ATTEMPT_TIMES: u32 = 5;
+
     pub fn average(&self) -> Duration {
-        self.total / (5 - self.error as u32)
+        self.total / (Self::ATTEMPT_TIMES - self.error)
     }
 
     pub fn is_failed(&self) -> bool {
-        self.error == 5
+        self.error == Self::ATTEMPT_TIMES
     }
 }
 
@@ -97,7 +99,7 @@ pub async fn determine_mirror() -> Option<String> {
         let url = url.join(testfile).unwrap();
         let tx = tx.clone();
         tokio::spawn(async move {
-            for _ in 0..5 {
+            for _ in 0..TestResult::ATTEMPT_TIMES {
                 let now = SystemTime::now();
 
                 tx.send((
@@ -113,6 +115,7 @@ pub async fn determine_mirror() -> Option<String> {
         });
     }
 
+    // must drop here, otherwise the receiver will block forever
     std::mem::drop(tx);
 
     let mut results = vec![
