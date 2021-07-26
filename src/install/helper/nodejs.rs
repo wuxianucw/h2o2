@@ -36,9 +36,9 @@ pub(crate) const BIN_INFO: (&str, &str) = (
 
 pub async fn determine_mirror() -> Option<String> {
     let mirrors = vec![
-        "https://nodejs.org/dist",
-        "https://mirrors.tuna.tsinghua.edu.cn/nodejs-release",
-        "https://mirrors.cloud.tencent.com/nodejs-release",
+        "https://nodejs.org/dist/",
+        "https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/",
+        "https://mirrors.cloud.tencent.com/nodejs-release/",
     ];
     let testfile = "v14.17.3/SHASUMS256.txt";
 

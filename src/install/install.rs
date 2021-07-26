@@ -119,7 +119,7 @@ async fn install_nodejs() -> InstallResult<ComponentInfo> {
         .await
         .ok_or(ErrorKind::NoAvailableSource)?;
     let (postfix, shasum256) = nodejs::BIN_INFO;
-    let url = format!("{}/v14.17.3/node-v14.17.3{}", &dist, postfix);
+    let url = format!("{}v14.17.3/node-v14.17.3{}", &dist, postfix);
 
     log::info!("{} {}", &url, shasum256);
 
