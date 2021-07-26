@@ -61,9 +61,10 @@ pub async fn determine_mirror(
 
     for (i, mirror) in mirrors.iter().enumerate() {
         let url = match testfile {
-            Some(file) => Url::parse(mirror).unwrap().join(file).unwrap(),
-            None => Url::parse(mirror).unwrap(),
-        };
+            Some(file) => Url::parse(mirror).unwrap().join(file),
+            None => Url::parse(mirror),
+        }
+        .unwrap();
         let tx = tx.clone();
         tokio::spawn(async move {
             for _ in 0..TestResult::ATTEMPT_TIMES {
@@ -71,7 +72,7 @@ pub async fn determine_mirror(
 
                 tx.send((
                     i,
-                    reqwest::get(url.as_str())
+                    reqwest::get(url.clone())
                         .await
                         .map_err(|_| ())
                         .and_then(|_| now.elapsed().map_err(|_| ())),
