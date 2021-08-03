@@ -2,12 +2,15 @@ use derive_more::{Constructor, Display, IsVariant};
 use std::result::Result as StdResult;
 use thiserror::Error as ThisError;
 use tokio::{
+    fs::File,
+    io::AsyncWriteExt,
     sync::broadcast::{error::RecvError, Receiver},
     time,
 };
 
 use super::helper::*;
 pub use crate::config::ComponentInfo;
+use crate::{config::Version, utils::sha256_file};
 
 #[derive(ThisError, Debug, Constructor)]
 #[error("Failed to install {com}: {kind}")]
@@ -31,6 +34,18 @@ pub enum ErrorKind {
 
     #[display(fmt = "no available source")]
     NoAvailableSource,
+
+    #[display(fmt = "{}", _0)]
+    IOError(#[from] std::io::Error),
+
+    #[display(fmt = "{}", _0)]
+    RequestError(#[from] reqwest::Error),
+
+    #[display(fmt = "{}", _0)]
+    RespError(reqwest::StatusCode),
+
+    #[display(fmt = "file checksum mismatch")]
+    ChecksumMismatch,
 
     #[display(fmt = "{}", _0)]
     Other(String),
@@ -119,13 +134,38 @@ async fn install_nodejs() -> InstallResult<ComponentInfo> {
         .await
         .ok_or(ErrorKind::NoAvailableSource)?;
     let (postfix, shasum256) = nodejs::BIN_INFO;
-    let url = format!("{}v14.17.3/node-v14.17.3{}", &dist, postfix);
+    let filename = format!("node-v14.17.3{}", postfix);
+    let url = format!("{}v14.17.3/{}", &dist, &filename);
+    log::info!("[Node.js] {}", &url);
 
-    log::info!("{} {}", &url, shasum256);
+    let dir = tempfile::tempdir().map_err(ErrorKind::IOError)?;
+    let path = dir.path().join(&filename);
+    let mut file = File::create(&path).await.map_err(ErrorKind::IOError)?;
 
-    time::sleep(time::Duration::from_secs(10)).await;
+    log::info!("[Node.js] 开始下载... Downloading...");
+    let mut res = reqwest::get(url).await.map_err(ErrorKind::RequestError)?;
+    if !res.status().is_success() {
+        return Err(ErrorKind::RespError(res.status()));
+    }
 
-    Err(ErrorKind::Other("not yet implemented".to_owned()))
+    while let Some(chunk) = res.chunk().await.map_err(ErrorKind::RequestError)? {
+        file.write_all(&chunk).await.map_err(ErrorKind::IOError)?;
+    }
+
+    file.sync_all().await.map_err(ErrorKind::IOError)?;
+    log::info!("[Node.js] 下载完毕。 Download completed.");
+
+    if sha256_file(&path).map_err(ErrorKind::IOError)? != shasum256 {
+        log::info!("[Node.js] 文件校验失败！ File checksum mismatch!");
+        return Err(ErrorKind::ChecksumMismatch);
+    }
+
+    let path = nodejs::do_install(&path).map_err(ErrorKind::IOError)?;
+
+    Ok(ComponentInfo::new(
+        Version::Valid(semver::Version::parse("14.17.3").unwrap()),
+        Some(path),
+    ))
 }
 
 async fn install_mongodb() -> InstallResult<ComponentInfo> {

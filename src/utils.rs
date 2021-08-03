@@ -1,4 +1,11 @@
-use std::process::Output;
+use data_encoding::HEXLOWER;
+use ring::digest::{Context, Digest, SHA256};
+use std::{
+    fs::File,
+    io::{self, BufReader, Read},
+    path::Path,
+    process::Output,
+};
 
 pub fn debug_output(output: &Output) {
     log::debug!("{}", &output.status);
@@ -49,4 +56,26 @@ macro_rules! check_version {
             true
         }
     }};
+}
+
+fn sha256_digest<R: Read>(mut reader: R) -> io::Result<Digest> {
+    let mut context = Context::new(&SHA256);
+    let mut buffer = [0; 1024];
+
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        context.update(&buffer[..count]);
+    }
+
+    Ok(context.finish())
+}
+
+pub fn sha256_file(file: impl AsRef<Path>) -> io::Result<String> {
+    let input = File::open(file)?;
+    let reader = BufReader::new(input);
+    let digest = sha256_digest(reader)?;
+    Ok(HEXLOWER.encode(digest.as_ref()))
 }

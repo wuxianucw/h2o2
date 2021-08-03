@@ -1,4 +1,4 @@
-use derive_more::IsVariant;
+use derive_more::{Constructor, IsVariant};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -67,7 +67,7 @@ impl Components {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, Constructor)]
 pub struct ComponentInfo {
     pub version: Version,
     pub path: Option<String>,

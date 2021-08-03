@@ -1,3 +1,6 @@
+use duct::cmd;
+use std::{env, io, path::Path};
+
 use super::utils;
 use crate::Com;
 
@@ -40,4 +43,26 @@ pub async fn determine_mirror() -> Option<String> {
     let testfile = "v14.17.3/SHASUMS256.txt";
 
     utils::determine_mirror(Com::NodeJS, mirrors, Some(testfile)).await
+}
+
+#[cfg(windows)]
+pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
+    // msiexec /i <file> /quiet /qn /norestart
+    if !cfg!(debug_assertions) {
+        cmd!(
+            "msiexec",
+            "/i",
+            path.as_ref(),
+            "/quiet",
+            "/qn",
+            "/norestart"
+        )
+        .stdout_capture()
+        .stderr_capture()
+        .run()?;
+    }
+
+    let path = env::var("PROGRAMFILES").unwrap();
+    let path = Path::new(&path).join("nodejs").join("node.exe");
+    Ok(path.to_string_lossy().to_string())
 }
