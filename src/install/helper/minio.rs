@@ -7,17 +7,17 @@ pub(crate) const BIN_INFO: &str = "";
 #[cfg(all(windows, target_arch = "x86_64"))]
 pub(crate) const BIN_INFO: &str = "windows-amd64/minio.exe";
 
-#[cfg(all(
-    target_os = "linux",
-    any(target_arch = "x86_64", target_arch = "aarch64")
-))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 pub(crate) const BIN_INFO: &str = "linux-amd64/minio";
 
-#[cfg(all(target_os = "linux", target_arch = "arm"))]
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 pub(crate) const BIN_INFO: &str = "linux-arm64/minio";
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 pub(crate) const BIN_INFO: &str = "darwin-amd64/minio";
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+pub(crate) const BIN_INFO: &str = "darwin-arm64/minio";
 
 pub async fn determine_mirror() -> Option<String> {
     let mirrors = vec![
