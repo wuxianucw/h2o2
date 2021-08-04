@@ -1,5 +1,7 @@
+use std::{fs, io, path::Path};
+
 use super::utils;
-use crate::Com;
+use crate::{config, Com};
 
 #[cfg(all(windows, target_arch = "x86"))]
 pub(crate) const BIN_INFO: &str = "";
@@ -26,4 +28,12 @@ pub async fn determine_mirror() -> Option<String> {
     ];
 
     utils::determine_mirror(Com::MinIO, mirrors, None).await
+}
+
+pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
+    let target_path = config::get_com_path().join("minio");
+    fs::create_dir_all(&target_path)?;
+    let target_path = target_path.join(if cfg!(windows) { "minio.exe" } else { "minio" });
+    fs::copy(&path, &target_path)?;
+    Ok(target_path.to_string_lossy().to_string())
 }
