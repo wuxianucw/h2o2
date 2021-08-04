@@ -223,9 +223,40 @@ async fn install_minio() -> InstallResult<ComponentInfo> {
 async fn install_sandbox() -> InstallResult<ComponentInfo> {
     log::info!("开始安装 sandbox... Start to install sandbox...");
 
-    time::sleep(time::Duration::from_secs(3)).await;
+    if cfg!(target_arch = "x86") {
+        log::error!("[sandbox] x86 架构不受支持。 The x86 architecture is not supported.");
+        return Err(ErrorKind::PlatformNotSupported);
+    }
 
-    Err(ErrorKind::Other("not yet implemented".to_owned()))
+    log::info!("[sandbox] 寻找最快的下载源... Finding the fastest download source...");
+    let dist = sandbox::determine_mirror()
+        .await
+        .ok_or(ErrorKind::NoAvailableSource)?;
+    let postfix = sandbox::BIN_INFO;
+    let url = format!("{}executorserver-{}", &dist, postfix);
+
+    log::info!("[sandbox] {}", &url);
+
+    let dir = tempfile::tempdir().map_err(ErrorKind::IOError)?;
+    let path = dir.path().join("sandbox");
+    let mut file = File::create(&path).await.map_err(ErrorKind::IOError)?;
+
+    log::info!("[sandbox] 开始下载... Downloading...");
+    let mut res = reqwest::get(url).await.map_err(ErrorKind::RequestError)?;
+    if !res.status().is_success() {
+        return Err(ErrorKind::RespError(res.status()));
+    }
+
+    while let Some(chunk) = res.chunk().await.map_err(ErrorKind::RequestError)? {
+        file.write_all(&chunk).await.map_err(ErrorKind::IOError)?;
+    }
+
+    file.sync_all().await.map_err(ErrorKind::IOError)?;
+    log::info!("[sandbox] 下载完毕。 Download completed.");
+
+    let path = sandbox::do_install(&path).map_err(ErrorKind::IOError)?;
+
+    Ok(ComponentInfo::new(Version::Installed, Some(path)))
 }
 
 async fn install_yarn() -> InstallResult<ComponentInfo> {
