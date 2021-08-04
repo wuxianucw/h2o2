@@ -216,3 +216,9 @@ pub async fn save_config(config: &Config) -> Result<(), ConfigError> {
     .await
     .map_err(ConfigError::WriteError)
 }
+
+pub fn get_com_path() -> PathBuf {
+    let mut com_path = dirs::home_dir().expect("Failed to get home dir");
+    com_path.push(".h2o2");
+    com_path
+}

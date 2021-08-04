@@ -66,3 +66,26 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     let path = Path::new(&path).join("nodejs").join("node.exe");
     Ok(path.to_string_lossy().to_string())
 }
+
+#[cfg(unix)]
+pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
+    use crate::config;
+    use std::fs::create_dir_all;
+    use std::os::unix::fs::symlink;
+
+    // tar -xzf <file> -C <path>
+    let target_path = config::get_com_path().join("nodejs");
+    let _ = create_dir_all(&target_path);
+    cmd!("tar", "-xzf", path.as_ref(), "-C", target_path.as_ref())
+        .stdout_capture()
+        .stderr_capture()
+        .run()?;
+
+    if !cfg!(debug_assertions) {
+        // symlink to /usr/local/bin/node
+        let path = target_path.join("node");
+        symlink(&path, "/usr/local/bin/node")?;
+    }
+
+    Ok(path.to_string_lossy().to_string())
+}

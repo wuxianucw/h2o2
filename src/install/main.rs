@@ -1,7 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use clap::Clap;
 use futures::{stream::FuturesUnordered, StreamExt};
-use tokio::sync::broadcast;
+use std::path::Path;
+use tokio::{fs, sync::broadcast};
 
 use crate::{
     check_version,
@@ -48,6 +49,13 @@ pub async fn main(args: Args) -> Result<()> {
             }
         }
     };
+
+    let com_path = config::get_com_path();
+    if !Path::new(&com_path).is_dir() {
+        fs::create_dir(&com_path)
+            .await
+            .context("创建目录失败！ Failed to create directory!")?;
+    }
 
     // find out the components that need installing, and then execute them together
     let com = &mut config.components;
