@@ -262,7 +262,7 @@ pub async fn main(args: Args) -> Result<()> {
                     // try to parse version
                     // stdout: {version}
                     let stdout = stdout.trim();
-                    match Version::parse(&stdout) {
+                    match Version::parse(stdout) {
                         Ok(version) => {
                             log::info!("Found: Yarn {}", &version);
                             com.yarn.version = config::Version::Valid(version);
@@ -326,7 +326,7 @@ pub async fn main(args: Args) -> Result<()> {
                     // try to parse version
                     // stdout: {version}
                     let stdout = stdout.trim();
-                    match Version::parse(&stdout) {
+                    match Version::parse(stdout) {
                         Ok(version) => {
                             log::info!("Found: PM2 {}", &version);
                             com.pm2.version = config::Version::Valid(version);
@@ -413,7 +413,7 @@ pub async fn main(args: Args) -> Result<()> {
                     // try to parse version
                     // stdout: {version}
                     let stdout = stdout.trim();
-                    match Version::parse(&stdout) {
+                    match Version::parse(stdout) {
                         Ok(version) => {
                             log::info!("Found: Hydro {}", &version);
                             com.hydro.version = config::Version::Valid(version);
