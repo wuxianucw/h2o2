@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Clap;
 use duct::cmd;
 use semver::Version;
-use std::{env, io::ErrorKind, path::Path};
+use std::{io::ErrorKind, path::Path};
 
 use crate::{
     check_version,
@@ -391,8 +391,6 @@ pub async fn main(args: Args) -> Result<()> {
         // Note: `path` may not exist
         if Path::new(path).is_dir() {
             // try to execute some magic command
-            let current_dir = env::current_dir().context("Current dir is not available")?;
-            env::set_current_dir(path).context("Failed to change working dir")?;
             let node = com
                 .nodejs
                 .path
@@ -403,6 +401,7 @@ pub async fn main(args: Args) -> Result<()> {
                 "-e",
                 "console.log(require('hydrooj/package.json').version)"
             )
+            .dir(path)
             .stdout_capture()
             .stderr_capture()
             .unchecked()
@@ -445,7 +444,6 @@ pub async fn main(args: Args) -> Result<()> {
                     }
                 }
             }
-            env::set_current_dir(current_dir).context("Failed to change working dir")?;
         } else {
             log::error!("未找到 Hydro。 Hydro is not found.");
         }

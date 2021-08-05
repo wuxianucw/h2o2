@@ -103,6 +103,7 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
         "\n# Node.js\nexport PATH={}:$PATH\n",
         path.to_string_lossy().into_owned()
     )?;
+    // FIXME: it does not work
     cmd!(".", "~/.profile")
         .stdout_capture()
         .stderr_capture()
