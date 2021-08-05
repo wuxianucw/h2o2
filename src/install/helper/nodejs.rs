@@ -66,13 +66,13 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
 
     let path = env::var("PROGRAMFILES").unwrap();
     let path = Path::new(&path).join("nodejs").join("node.exe");
-    Ok(path.to_string_lossy().to_string())
+    Ok(path.to_string_lossy().into_owned())
 }
 
 #[cfg(unix)]
 pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
-    use std::fs::create_dir_all;
-    use std::os::unix::fs::symlink;
+    use std::fs::{self, create_dir_all};
+    use std::io::Write;
 
     use crate::config;
 
@@ -91,11 +91,22 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     .stderr_capture()
     .run()?;
 
-    // symlink to /usr/local/bin/node
-    let path = target_path.join("bin").join("node");
-    if !cfg!(debug_assertions) {
-        symlink(&path, "/usr/local/bin/node")?;
-    }
+    let profile = dirs::home_dir().unwrap().join(".profile");
+    let mut profile = fs::OpenOptions::new()
+        .write(true)
+        .append(true)
+        .create(true)
+        .open(profile)?;
+    write!(
+        &mut profile,
+        "\n# Node.js\nexport PATH={}:$PATH\n",
+        target_path.to_string_lossy().into_owned()
+    )?;
+    cmd!(".", "~/.profile")
+        .stdout_capture()
+        .stderr_capture()
+        .run()?;
 
-    Ok(path.to_string_lossy().to_string())
+    let path = target_path.join("node");
+    Ok(path.to_string_lossy().into_owned())
 }
