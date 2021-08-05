@@ -91,9 +91,9 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     .stderr_capture()
     .run()?;
 
+    // symlink to /usr/local/bin/node
+    let path = target_path.join("node");
     if !cfg!(debug_assertions) {
-        // symlink to /usr/local/bin/node
-        let path = target_path.join("node");
         symlink(&path, "/usr/local/bin/node")?;
     }
 
