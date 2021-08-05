@@ -35,5 +35,14 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     fs::create_dir_all(&target_path)?;
     let target_path = target_path.join(if cfg!(windows) { "minio.exe" } else { "minio" });
     fs::copy(&path, &target_path)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut perms = fs::metadata(&target_path)?.permissions();
+        let mode = perms.mode() | 0o111;
+        perms.set_mode(mode);
+        fs::set_permissions(&target_path, perms)?;
+    }
     Ok(target_path.to_string_lossy().to_string())
 }
