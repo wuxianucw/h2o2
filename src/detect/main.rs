@@ -63,7 +63,12 @@ pub async fn main(args: Args) -> Result<()> {
 
     // detect Node.js
     log::info!("探测 Node.js... Detecting Node.js...");
-    let executable = com.nodejs.path.as_deref().unwrap_or("node");
+    let path = com.nodejs.path.clone();
+    let executable = path
+        .as_deref()
+        .map(|s| Path::new(s).join("node").to_string_lossy().into_owned())
+        .unwrap_or_else(|| "node".to_owned());
+    let executable = &executable[..];
     // try to execute `node -v`
     match cmd!(executable, "-v")
         .stdout_capture()

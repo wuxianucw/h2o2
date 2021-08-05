@@ -160,5 +160,13 @@ pub async fn main(args: Args) -> Result<()> {
         }
     }
 
+    if cfg!(unix) {
+        // FIXME: exec $SHELL
+        log::warn!(
+            "请手动执行 `source ~/.profile` 来应用更改。 \
+            Please execute `source ~/.profile` manually to apply changes."
+        );
+    }
+
     todo!();
 }
