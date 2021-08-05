@@ -92,7 +92,7 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     .run()?;
 
     // symlink to /usr/local/bin/node
-    let path = target_path.join("node");
+    let path = target_path.join("bin").join("node");
     if !cfg!(debug_assertions) {
         symlink(&path, "/usr/local/bin/node")?;
     }
