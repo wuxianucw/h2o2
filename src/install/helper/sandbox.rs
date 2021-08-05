@@ -48,5 +48,5 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
         perms.set_mode(mode);
         fs::set_permissions(&target_path, perms)?;
     }
-    Ok(target_path.to_string_lossy().to_string())
+    Ok(target_path.to_string_lossy().into_owned())
 }
