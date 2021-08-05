@@ -92,10 +92,10 @@ pub async fn determine_mirror(
         let result = &mut results[i];
         if let Ok(t) = res {
             result.total += t;
-            log::info!("[{}] {} -- {}ms", com, mirrors[i], t.as_millis());
+            log::debug!("[{}] {} -- {}ms", com, mirrors[i], t.as_millis());
         } else {
             result.error += 1;
-            log::info!("[{}] {} -- FAILED", com, mirrors[i]);
+            log::debug!("[{}] {} -- FAILED", com, mirrors[i]);
         }
     }
 
