@@ -1,5 +1,5 @@
 use duct::cmd;
-use std::{env, io, path::Path};
+use std::{io, path::Path};
 
 use super::utils;
 use crate::Com;
@@ -47,6 +47,8 @@ pub async fn determine_mirror() -> Option<String> {
 
 #[cfg(windows)]
 pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
+    use std::env;
+
     // msiexec /i <file> /quiet /qn /norestart
     if !cfg!(debug_assertions) {
         cmd!(
@@ -69,17 +71,25 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
 
 #[cfg(unix)]
 pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
-    use crate::config;
     use std::fs::create_dir_all;
     use std::os::unix::fs::symlink;
+
+    use crate::config;
 
     // tar -xzf <file> -C <path>
     let target_path = config::get_com_path().join("nodejs");
     let _ = create_dir_all(&target_path);
-    cmd!("tar", "-xzf", path.as_ref(), "-C", target_path.as_ref())
-        .stdout_capture()
-        .stderr_capture()
-        .run()?;
+    cmd!(
+        "tar",
+        "-xzf",
+        path.as_ref(),
+        "-C",
+        &target_path,
+        "--strip-components=1"
+    )
+    .stdout_capture()
+    .stderr_capture()
+    .run()?;
 
     if !cfg!(debug_assertions) {
         // symlink to /usr/local/bin/node

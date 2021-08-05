@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use clap::Clap;
 use duct::cmd;
 use semver::Version;
-use std::{env, io::ErrorKind};
+use std::{env, io::ErrorKind, path::Path};
 
 use crate::{
     check_version,
@@ -388,62 +388,67 @@ pub async fn main(args: Args) -> Result<()> {
                 &yarn_global_dir
             }
         };
-        // try to execute some magic command
-        let current_dir = env::current_dir().context("Current dir is not available")?;
-        env::set_current_dir(path).context("Failed to change working dir")?;
-        let node = com
-            .nodejs
-            .path
-            .as_deref()
-            .expect("Node.js should be OK, but its `path` is `None`");
-        match cmd!(
-            node,
-            "-e",
-            "console.log(require('hydrooj/package.json').version)"
-        )
-        .stdout_capture()
-        .stderr_capture()
-        .unchecked()
-        .run()
-        {
-            Ok(output) => {
-                let stdout =
-                    String::from_utf8(output.stdout.clone()).context("Failed to convert stdout")?;
-                if output.status.success() {
-                    // try to parse version
-                    // stdout: {version}
-                    let stdout = stdout.trim();
-                    match Version::parse(stdout) {
-                        Ok(version) => {
-                            log::info!("Found: Hydro {}", &version);
-                            com.hydro.version = config::Version::Valid(version);
-                            com.hydro.path = Some(path.to_owned());
+        // Note: `path` may not exist
+        if Path::new(path).is_dir() {
+            // try to execute some magic command
+            let current_dir = env::current_dir().context("Current dir is not available")?;
+            env::set_current_dir(path).context("Failed to change working dir")?;
+            let node = com
+                .nodejs
+                .path
+                .as_deref()
+                .expect("Node.js should be OK, but its `path` is `None`");
+            match cmd!(
+                node,
+                "-e",
+                "console.log(require('hydrooj/package.json').version)"
+            )
+            .stdout_capture()
+            .stderr_capture()
+            .unchecked()
+            .run()
+            {
+                Ok(output) => {
+                    let stdout = String::from_utf8(output.stdout.clone())
+                        .context("Failed to convert stdout")?;
+                    if output.status.success() {
+                        // try to parse version
+                        // stdout: {version}
+                        let stdout = stdout.trim();
+                        match Version::parse(stdout) {
+                            Ok(version) => {
+                                log::info!("Found: Hydro {}", &version);
+                                com.hydro.version = config::Version::Valid(version);
+                                com.hydro.path = Some(path.to_owned());
+                            }
+                            Err(e) => {
+                                log::error!("解析版本号失败。 Failed to parse version.");
+                                log::debug!("{:#?}", e);
+                                debug_output(&output);
+                            }
                         }
-                        Err(e) => {
-                            log::error!("解析版本号失败。 Failed to parse version.");
-                            log::debug!("{:#?}", e);
-                            debug_output(&output);
-                        }
+                    } else {
+                        log::error!("未找到 Hydro。 Hydro is not found.");
+                        debug_output(&output);
                     }
-                } else {
-                    log::error!("未找到 Hydro。 Hydro is not found.");
-                    debug_output(&output);
+                }
+                Err(e) => {
+                    if let ErrorKind::NotFound = e.kind() {
+                        log::error!("未找到 Hydro。 Hydro is not found.");
+                    } else {
+                        log::error!(
+                            "命令 `{} -e <...>` 执行异常。 Failed to execute `{} -e <...>`.",
+                            node,
+                            node
+                        );
+                        log::debug!("{:#?}", e);
+                    }
                 }
             }
-            Err(e) => {
-                if let ErrorKind::NotFound = e.kind() {
-                    log::error!("未找到 Hydro。 Hydro is not found.");
-                } else {
-                    log::error!(
-                        "命令 `{} -e <...>` 执行异常。 Failed to execute `{} -e <...>`.",
-                        node,
-                        node
-                    );
-                    log::debug!("{:#?}", e);
-                }
-            }
+            env::set_current_dir(current_dir).context("Failed to change working dir")?;
+        } else {
+            log::error!("未找到 Hydro。 Hydro is not found.");
         }
-        env::set_current_dir(current_dir).context("Failed to change working dir")?;
     } else {
         log::warn!(
             "未找到 Yarn，跳过 Hydro（依赖 Yarn）。 \
