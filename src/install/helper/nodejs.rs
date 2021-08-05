@@ -91,6 +91,7 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     .stderr_capture()
     .run()?;
 
+    let path = target_path.join("bin");
     let profile = dirs::home_dir().unwrap().join(".profile");
     let mut profile = fs::OpenOptions::new()
         .write(true)
@@ -100,13 +101,13 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
     write!(
         &mut profile,
         "\n# Node.js\nexport PATH={}:$PATH\n",
-        target_path.to_string_lossy().into_owned()
+        path.to_string_lossy().into_owned()
     )?;
     cmd!(".", "~/.profile")
         .stdout_capture()
         .stderr_capture()
         .run()?;
 
-    let path = target_path.join("node");
+    let path = path.join("node");
     Ok(path.to_string_lossy().into_owned())
 }
