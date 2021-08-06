@@ -94,6 +94,17 @@ impl ComponentInfo {
             _ => None,
         }
     }
+
+    pub fn path(&self, bin: &str) -> String {
+        self.path
+            .as_deref()
+            .map(|s| Path::new(s).join(bin).to_string_lossy().into_owned())
+            .unwrap_or_else(|| bin.to_owned())
+    }
+
+    pub fn path_or<'a>(&'a self, default: &'a str) -> &'a str {
+        self.path.as_deref().unwrap_or(default)
+    }
 }
 
 #[derive(Debug, IsVariant)]

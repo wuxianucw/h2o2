@@ -63,12 +63,7 @@ pub async fn main(args: Args) -> Result<()> {
 
     // detect Node.js
     log::info!("探测 Node.js... Detecting Node.js...");
-    let executable = com
-        .nodejs
-        .path
-        .as_deref()
-        .map(|s| Path::new(s).join("node").to_string_lossy().into_owned())
-        .unwrap_or_else(|| "node".to_owned());
+    let executable = com.nodejs.path("node");
     let executable = &executable[..];
     // try to execute `node -v`
     match cmd!(executable, "-v")
@@ -133,7 +128,7 @@ pub async fn main(args: Args) -> Result<()> {
 
     // detect MongoDB
     log::info!("探测 MongoDB... Detecting MongoDB...");
-    let executable = com.mongodb.path.as_deref().unwrap_or("mongod");
+    let executable = com.mongodb.path_or("mongod");
     // try to execute `mongod --version`
     match cmd!(executable, "--version")
         .stdout_capture()
@@ -160,8 +155,8 @@ pub async fn main(args: Args) -> Result<()> {
                         Ok(version) => {
                             log::info!("Found: MongoDB {}", &version);
                             check_version!(mongodb, &version, warn);
-                            com.mongodb.version = config::Version::Valid(version);
                             com.mongodb.path = Some(executable.to_owned());
+                            com.mongodb.version = config::Version::Valid(version);
                         }
                         Err(e) => {
                             log::error!("解析版本号失败。 Failed to parse version.");
@@ -195,7 +190,7 @@ pub async fn main(args: Args) -> Result<()> {
 
     // detect MinIO
     log::info!("探测 MinIO... Detecting MinIO...");
-    let executable = com.minio.path.as_deref().unwrap_or("minio");
+    let executable = com.minio.path_or("minio");
     // try to execute `minio -v`
     match cmd!(executable, "-v")
         .stdout_capture()
@@ -213,8 +208,8 @@ pub async fn main(args: Args) -> Result<()> {
                 let stdout = stdout.trim();
                 if stdout.starts_with("minio version ") {
                     log::info!("Found: MinIO installed");
-                    com.minio.version = config::Version::Installed;
                     com.minio.path = Some(executable.to_owned());
+                    com.minio.version = config::Version::Installed;
                 } else {
                     log::error!(
                         "MinIO 的输出格式不正确，疑似运行异常。 \
@@ -250,11 +245,9 @@ pub async fn main(args: Args) -> Result<()> {
     // detect Yarn
     if nodejs_ok {
         log::info!("探测 Yarn... Detecting Yarn...");
-        let executable =
-            com.yarn
-                .path
-                .as_deref()
-                .unwrap_or(if cfg!(windows) { "yarn.cmd" } else { "yarn" });
+        let executable = com
+            .yarn
+            .path_or(if cfg!(windows) { "yarn.cmd" } else { "yarn" });
         // try to execute `yarn -v`
         match cmd!(executable, "-v")
             .stdout_capture()
@@ -272,8 +265,8 @@ pub async fn main(args: Args) -> Result<()> {
                     match Version::parse(stdout) {
                         Ok(version) => {
                             log::info!("Found: Yarn {}", &version);
-                            com.yarn.version = config::Version::Valid(version);
                             com.yarn.path = Some(executable.to_owned());
+                            com.yarn.version = config::Version::Valid(version);
                             yarn_ok = true;
                         }
                         Err(e) => {
@@ -314,11 +307,9 @@ pub async fn main(args: Args) -> Result<()> {
     // detect PM2
     if nodejs_ok {
         log::info!("探测 PM2... Detecting PM2...");
-        let executable =
-            com.pm2
-                .path
-                .as_deref()
-                .unwrap_or(if cfg!(windows) { "pm2.cmd" } else { "pm2" });
+        let executable = com
+            .pm2
+            .path_or(if cfg!(windows) { "pm2.cmd" } else { "pm2" });
         // try to execute `pm2 -v -s --no-daemon`
         match cmd!(executable, "-v", "-s", "--no-daemon")
             .stdout_capture()
@@ -336,8 +327,8 @@ pub async fn main(args: Args) -> Result<()> {
                     match Version::parse(stdout) {
                         Ok(version) => {
                             log::info!("Found: PM2 {}", &version);
-                            com.pm2.version = config::Version::Valid(version);
                             com.pm2.path = Some(executable.to_owned());
+                            com.pm2.version = config::Version::Valid(version);
                         }
                         Err(e) => {
                             log::error!("解析版本号失败。 Failed to parse version.");
