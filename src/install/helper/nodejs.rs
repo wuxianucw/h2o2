@@ -103,6 +103,7 @@ pub fn do_install(path: impl AsRef<Path>) -> io::Result<String> {
         "\n# Node.js\nexport PATH={}:$PATH\n",
         path.to_string_lossy().into_owned()
     )?;
+    profile.sync_all()?;
 
     Ok(path.to_string_lossy().into_owned())
 }
