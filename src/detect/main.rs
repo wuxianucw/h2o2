@@ -63,8 +63,9 @@ pub async fn main(args: Args) -> Result<()> {
 
     // detect Node.js
     log::info!("探测 Node.js... Detecting Node.js...");
-    let path = com.nodejs.path.clone();
-    let executable = path
+    let executable = com
+        .nodejs
+        .path
         .as_deref()
         .map(|s| Path::new(s).join("node").to_string_lossy().into_owned())
         .unwrap_or_else(|| "node".to_owned());
@@ -96,7 +97,8 @@ pub async fn main(args: Args) -> Result<()> {
                             log::info!("Found: Node.js {}", &version);
                             check_version!(nodejs, &version, warn);
                             com.nodejs.version = config::Version::Valid(version);
-                            com.nodejs.path = Some(executable.to_owned());
+                            // leave `nodejs.path` untouched
+                            // com.nodejs.path = path;
                             nodejs_ok = true;
                         }
                         Err(e) => {
