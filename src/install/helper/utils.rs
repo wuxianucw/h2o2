@@ -72,7 +72,12 @@ pub async fn determine_mirror(
 
                 tx.send((
                     i,
-                    reqwest::get(url.clone())
+                    reqwest::Client::builder()
+                        .timeout(Duration::from_secs(10))
+                        .build()
+                        .unwrap()
+                        .get(url.clone())
+                        .send()
                         .await
                         .map_err(|_| ())
                         .and_then(|_| now.elapsed().map_err(|_| ())),
