@@ -58,6 +58,17 @@ macro_rules! check_version {
     }};
 }
 
+#[macro_export]
+macro_rules! maybe_cmd {
+    ($cmd:expr) => {
+        if cfg!(windows) {
+            concat!($cmd, ".cmd")
+        } else {
+            $cmd
+        }
+    };
+}
+
 fn sha256_digest<R: Read>(mut reader: R) -> io::Result<Digest> {
     let mut context = Context::new(&SHA256);
     let mut buffer = [0; 1024];

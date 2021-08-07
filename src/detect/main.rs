@@ -7,7 +7,7 @@ use std::{io::ErrorKind, path::Path};
 use crate::{
     check_version,
     config::{self, Config, ConfigError},
-    show,
+    maybe_cmd, show,
     utils::debug_output,
 };
 
@@ -142,7 +142,7 @@ pub async fn main(args: Args) -> Result<()> {
             if output.status.success() {
                 // try to parse version
                 // stdout(first line): db version v{<version>}
-                let stdout = stdout.lines().next().unwrap_or("");
+                let stdout = stdout.lines().next().unwrap_or("").trim();
                 if stdout.len() < "db version v?".len() {
                     log::error!(
                         "MongoDB 的输出太短，疑似运行异常。 \
@@ -245,9 +245,7 @@ pub async fn main(args: Args) -> Result<()> {
     // detect Yarn
     if nodejs_ok {
         log::info!("探测 Yarn... Detecting Yarn...");
-        let executable = com
-            .yarn
-            .path_or(if cfg!(windows) { "yarn.cmd" } else { "yarn" });
+        let executable = com.yarn.path_or(maybe_cmd!("yarn"));
         // try to execute `yarn -v`
         match cmd!(executable, "-v")
             .stdout_capture()
@@ -307,9 +305,7 @@ pub async fn main(args: Args) -> Result<()> {
     // detect PM2
     if nodejs_ok {
         log::info!("探测 PM2... Detecting PM2...");
-        let executable = com
-            .pm2
-            .path_or(if cfg!(windows) { "pm2.cmd" } else { "pm2" });
+        let executable = com.pm2.path_or(maybe_cmd!("pm2"));
         // try to execute `pm2 -v -s --no-daemon`
         match cmd!(executable, "-v", "-s", "--no-daemon")
             .stdout_capture()
