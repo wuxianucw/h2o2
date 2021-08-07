@@ -67,7 +67,7 @@ impl Components {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Constructor)]
+#[derive(Serialize, Deserialize, Debug, Default, Constructor, Clone)]
 pub struct ComponentInfo {
     pub version: Version,
     pub path: Option<String>,
@@ -107,7 +107,7 @@ impl ComponentInfo {
     }
 }
 
-#[derive(Debug, IsVariant)]
+#[derive(Debug, IsVariant, Clone)]
 pub enum Version {
     Unknown,
     Installed,

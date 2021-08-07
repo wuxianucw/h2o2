@@ -70,8 +70,8 @@ pub enum Com {
 }
 
 #[derive(Debug, IsVariant, Clone)]
-pub enum Signal {
-    Ready(Com),
+pub enum Signal<'a> {
+    Ready(Com, &'a ComponentInfo),
     Failed(Com),
 }
 
@@ -80,7 +80,8 @@ macro_rules! wait_for_components {
         let mut coms = vec![$($dep_com),+];
         while !coms.is_empty() {
             match $rx.recv().await.map_err(|e| Error::new($com, ErrorKind::RecvError(e)))? {
-                Signal::Ready(com) => {
+                Signal::Ready(com, _info) => {
+                    // TODO: collect ComponentInfo
                     if let Some(pos) = coms.iter().position(|x| *x == com) {
                         coms.swap_remove(pos);
                     }
@@ -97,7 +98,7 @@ macro_rules! wait_for_components {
 
 pub type Result<T> = StdResult<T, Error>;
 
-pub async fn install(com: Com, rx: Option<Receiver<Signal>>) -> Result<(Com, ComponentInfo)> {
+pub async fn install(com: Com, rx: Option<Receiver<Signal<'_>>>) -> Result<(Com, ComponentInfo)> {
     match com {
         // must await each, because `impl Future<Output = T>` is an opaque type
         Com::NodeJS => install_nodejs().await,

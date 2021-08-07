@@ -7,7 +7,7 @@ use tokio::{fs, sync::broadcast};
 use crate::{
     check_version,
     config::{self, Config, ConfigError},
-    install::{install, Com, Signal},
+    install::{install, Com, ComponentInfo, Signal},
 };
 
 #[derive(Clap, Debug)]
@@ -79,7 +79,7 @@ pub async fn main(args: Args) -> Result<()> {
     // Yarn
     if com.yarn.is_installed() {
         log::info!("Yarn 已安装，不执行任何操作。 Yarn is already installed, skip.");
-        let _ = tx.send(Signal::Ready(Com::Yarn)); // Note: `tx.send()` may fail if there is no receiver
+        let _ = tx.send(Signal::Ready(Com::Yarn, &com.yarn)); // Note: `tx.send()` may fail if there is no receiver
     } else {
         tasks.push((Com::Yarn, Some(tx.subscribe())));
     }
@@ -87,13 +87,12 @@ pub async fn main(args: Args) -> Result<()> {
     // PM2
     if com.pm2.is_installed() {
         log::info!("PM2 已安装，不执行任何操作。 PM2 is already installed, skip.");
-        let _ = tx.send(Signal::Ready(Com::PM2));
+        let _ = tx.send(Signal::Ready(Com::PM2, &com.pm2));
     } else {
         tasks.push((Com::PM2, Some(tx.subscribe())));
     }
 
     // Node.js
-    log::info!("检查 Node.js... Checking Node.js...");
     if com.nodejs.is_installed() {
         log::info!("Node.js 已安装，不执行任何操作。 Node.js is already installed, skip.");
         let version = com
@@ -106,7 +105,7 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
-        let _ = tx.send(Signal::Ready(Com::NodeJS));
+        let _ = tx.send(Signal::Ready(Com::NodeJS, &com.nodejs));
     } else {
         tasks.push((Com::NodeJS, None));
     }
@@ -119,7 +118,7 @@ pub async fn main(args: Args) -> Result<()> {
             .version()
             .expect("MongoDB should have a version if installed");
         check_version!(mongodb, version, warn);
-        let _ = tx.send(Signal::Ready(Com::MongoDB));
+        let _ = tx.send(Signal::Ready(Com::MongoDB, &com.mongodb));
     } else {
         tasks.push((Com::MongoDB, None));
     }
@@ -127,7 +126,7 @@ pub async fn main(args: Args) -> Result<()> {
     // MinIO
     if com.minio.is_installed() {
         log::info!("MinIO 已安装，不执行任何操作。 MinIO is already installed, skip.");
-        let _ = tx.send(Signal::Ready(Com::MinIO));
+        let _ = tx.send(Signal::Ready(Com::MinIO, &com.minio));
     } else {
         tasks.push((Com::MinIO, None));
     }
@@ -135,7 +134,7 @@ pub async fn main(args: Args) -> Result<()> {
     // sandbox
     if com.sandbox.is_installed() {
         log::info!("sandbox 已安装，不执行任何操作。 sandbox is already installed, skip.");
-        let _ = tx.send(Signal::Ready(Com::Sandbox));
+        let _ = tx.send(Signal::Ready(Com::Sandbox, &com.sandbox));
     } else {
         tasks.push((Com::Sandbox, None));
     }
@@ -149,8 +148,16 @@ pub async fn main(args: Args) -> Result<()> {
         match res {
             Ok((com_id, com_info)) => {
                 log::info!("OK: {} {}", &com_id, com_info.to_show_format());
-                *com.borrow_mut_by_com(com_id) = com_info;
-                let _ = tx.send(Signal::Ready(com_id));
+                let info = com.borrow_by_com(com_id);
+                // Hack: *info = com_info;
+                // For each time, we only modify a defferent part of `com`.
+                // This is obviously safe, but rustc can't understand it.
+                // `Mutex` is also an option, but it is costly.
+                let info_ptr = info as *const ComponentInfo;
+                unsafe {
+                    *(info_ptr as *mut ComponentInfo) = com_info;
+                }
+                let _ = tx.send(Signal::Ready(com_id, info));
             }
             Err(e) => {
                 log::error!("安装 {} 失败！", e.com); // English is no need because the error message is already in English
