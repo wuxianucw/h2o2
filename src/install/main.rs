@@ -254,7 +254,7 @@ pub async fn main(args: Args) -> Result<()> {
                 log::info!("OK: {} {}", &com_id, com_info.to_show_format());
                 let info = com.borrow_by_com(com_id);
                 // Hack: *info = com_info;
-                // For each time, we only modify a defferent part of `com`.
+                // For each time, we only modify a different part of `com`.
                 // This is obviously safe, but rustc can't understand it.
                 // `Mutex` is also an option, but it is costly.
                 let info_ptr = info as *const ComponentInfo;
