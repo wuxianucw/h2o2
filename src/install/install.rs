@@ -332,7 +332,7 @@ async fn install_yarn(nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
                         .stdout,
                 )
                 .map_err(|_| ErrorKind::Other("failed to convert output".into()))?;
-                let version = semver::Version::parse(&version)
+                let version = semver::Version::parse(version.trim())
                     .map_err(|e| ErrorKind::Other(format!("invalid semver: {}", e)))?;
                 Ok(ComponentInfo::new(Version::Valid(version), Some(path)))
             } else {
@@ -349,12 +349,56 @@ async fn install_yarn(nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
         })
 }
 
-async fn install_pm2(_nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
+async fn install_pm2(nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
     log::info!("开始安装 PM2... Start to install PM2...");
 
-    time::sleep(time::Duration::from_secs(5)).await;
-
-    Err(ErrorKind::Other("not yet implemented".to_owned()))
+    duct::cmd!(nodejs.path("npm"), "install", "--global", "pm2")
+        .stdout_capture()
+        .stderr_capture()
+        .unchecked()
+        .run()
+        .map_err(ErrorKind::IOError)
+        .and_then(|output| {
+            if output.status.success() {
+                log::info!(
+                    "[PM2] 安装已完成，获取安装目录... Installation finished. Getting path..."
+                );
+                let path = String::from_utf8(
+                    duct::cmd!(nodejs.path("npm"), "bin", "--global")
+                        .stdout_capture()
+                        .stderr_null()
+                        .run()
+                        .map_err(ErrorKind::IOError)?
+                        .stdout,
+                )
+                .map_err(|_| ErrorKind::Other("failed to convert output".into()))?;
+                let path = Path::new(&path)
+                    .join(maybe_cmd!("pm2"))
+                    .to_string_lossy()
+                    .into_owned();
+                log::info!("[PM2] 获取版本... Getting version...");
+                let version = String::from_utf8(
+                    duct::cmd!(&path, "-v", "-s", "--no-daemon")
+                        .stdout_capture()
+                        .stderr_null()
+                        .run()
+                        .map_err(ErrorKind::IOError)?
+                        .stdout,
+                )
+                .map_err(|_| ErrorKind::Other("failed to convert output".into()))?;
+                let version = semver::Version::parse(version.trim())
+                    .map_err(|e| ErrorKind::Other(format!("invalid semver: {}", e)))?;
+                Ok(ComponentInfo::new(Version::Valid(version), Some(path)))
+            } else {
+                log::error!(
+                    "[PM2] `npm install --global pm2`: {}\nstdout:\n{}\nstderr:\n{}",
+                    &output.status,
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr),
+                );
+                Err(ErrorKind::Other("`npm install --global pm2` failed".into()))
+            }
+        })
 }
 
 async fn install_hydro(
