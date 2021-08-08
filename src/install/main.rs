@@ -21,28 +21,30 @@ macro_rules! run {
 }
 
 macro_rules! expect {
-    ($output:expr => valid) => {{
+    ($output:expr => valid => semver) => {
         $output.map_err(|_| ()).and_then(|output| {
             let stdout = String::from_utf8(output.stdout).map_err(|_| ())?;
             let stdout = stdout.lines().next().unwrap_or("").trim();
-            ::semver::Version::parse(&stdout)
-                .map_err(|_| ())
-                .map($crate::config::Version::Valid)
+            ::semver::Version::parse(&stdout).map_err(|_| ())
         })
-    }};
-    ($output:expr => $prefix:expr) => {{
+    };
+    ($output:expr => $prefix:expr => semver) => {
         $output.map_err(|_| ()).and_then(|output| {
             let stdout = String::from_utf8(output.stdout).map_err(|_| ())?;
             let stdout = stdout.lines().next().unwrap_or("").trim();
             if stdout.len() <= $prefix.len() {
                 return Err(());
             }
-            ::semver::Version::parse(&stdout[$prefix.len()..])
-                .map_err(|_| ())
-                .map($crate::config::Version::Valid)
+            ::semver::Version::parse(&stdout[$prefix.len()..]).map_err(|_| ())
         })
-    }};
-    ($output:expr => starts with $prefix:expr) => {{
+    };
+    ($output:expr => valid) => {
+        expect!($output => valid => semver).map($crate::config::Version::Valid)
+    };
+    ($output:expr => $prefix:expr) => {
+        expect!($output => $prefix => semver).map($crate::config::Version::Valid)
+    };
+    ($output:expr => starts with $prefix:expr) => {
         $output.map_err(|_| ()).and_then(|output| {
             let stdout = String::from_utf8(output.stdout).map_err(|_| ())?;
             let stdout = stdout.trim();
@@ -52,24 +54,7 @@ macro_rules! expect {
                 Err(())
             }
         })
-    }};
-    ($output:expr => valid => semver) => {{
-        $output.map_err(|_| ()).and_then(|output| {
-            let stdout = String::from_utf8(output.stdout).map_err(|_| ())?;
-            let stdout = stdout.lines().next().unwrap_or("").trim();
-            ::semver::Version::parse(&stdout).map_err(|_| ())
-        })
-    }};
-    ($output:expr => $prefix:expr => semver) => {{
-        $output.map_err(|_| ()).and_then(|output| {
-            let stdout = String::from_utf8(output.stdout).map_err(|_| ())?;
-            let stdout = stdout.lines().next().unwrap_or("").trim();
-            if stdout.len() <= $prefix.len() {
-                return Err(());
-            }
-            ::semver::Version::parse(&stdout[$prefix.len()..]).map_err(|_| ())
-        })
-    }};
+    };
 }
 
 #[derive(Clap, Debug)]
@@ -192,7 +177,7 @@ pub async fn main(args: Args) -> Result<()> {
             If you need H2O2 to install a recommended version of Node.js, \
             please delete the existing version in the system and run H2O2 again."
         );
-        com.nodejs.path = Some("node".to_owned());
+        com.nodejs.path = None;
         com.nodejs.version = config::Version::Valid(v);
         let _ = tx.send(Signal::Ready(Com::NodeJS, &com.nodejs));
     } else {
