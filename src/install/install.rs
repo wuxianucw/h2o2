@@ -1,5 +1,5 @@
 use derive_more::{Constructor, Display, IsVariant};
-use std::result::Result as StdResult;
+use std::{path::Path, result::Result as StdResult};
 use thiserror::Error as ThisError;
 use tokio::{
     fs::File,
@@ -10,7 +10,7 @@ use tokio::{
 
 use super::helper::*;
 pub use crate::config::ComponentInfo;
-use crate::{config::Version, utils::sha256_file};
+use crate::{config::Version, maybe_cmd, utils::sha256_file};
 
 #[derive(ThisError, Debug, Constructor)]
 #[error("Failed to install {com}: {kind}")]
@@ -295,12 +295,58 @@ async fn install_sandbox() -> InstallResult<ComponentInfo> {
     Ok(ComponentInfo::new(Version::Installed, Some(path)))
 }
 
-async fn install_yarn(_nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
+async fn install_yarn(nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Yarn... Start to install Yarn...");
 
-    time::sleep(time::Duration::from_secs(20)).await;
-
-    Err(ErrorKind::Other("not yet implemented".to_owned()))
+    duct::cmd!(nodejs.path("npm"), "install", "--global", "yarn")
+        .stdout_capture()
+        .stderr_capture()
+        .unchecked()
+        .run()
+        .map_err(ErrorKind::IOError)
+        .and_then(|output| {
+            if output.status.success() {
+                log::info!(
+                    "[Yarn] 安装已完成，获取安装目录... Installation finished. Getting path..."
+                );
+                let path = String::from_utf8(
+                    duct::cmd!(nodejs.path("npm"), "bin", "--global")
+                        .stdout_capture()
+                        .stderr_null()
+                        .run()
+                        .map_err(ErrorKind::IOError)?
+                        .stdout,
+                )
+                .map_err(|_| ErrorKind::Other("failed to convert output".into()))?;
+                let path = Path::new(&path)
+                    .join(maybe_cmd!("yarn"))
+                    .to_string_lossy()
+                    .into_owned();
+                log::info!("[Yarn] 获取版本... Getting version...");
+                let version = String::from_utf8(
+                    duct::cmd!(&path, "--version")
+                        .stdout_capture()
+                        .stderr_null()
+                        .run()
+                        .map_err(ErrorKind::IOError)?
+                        .stdout,
+                )
+                .map_err(|_| ErrorKind::Other("failed to convert output".into()))?;
+                let version = semver::Version::parse(&version)
+                    .map_err(|e| ErrorKind::Other(format!("invalid semver: {}", e)))?;
+                Ok(ComponentInfo::new(Version::Valid(version), Some(path)))
+            } else {
+                log::error!(
+                    "[Yarn] `npm install --global yarn`: {}\nstdout:\n{}\nstderr:\n{}",
+                    &output.status,
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr),
+                );
+                Err(ErrorKind::Other(
+                    "`npm install --global yarn` failed".into(),
+                ))
+            }
+        })
 }
 
 async fn install_pm2(_nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
