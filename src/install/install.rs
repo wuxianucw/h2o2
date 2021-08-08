@@ -75,15 +75,44 @@ pub enum Signal<'a> {
     Failed(Com),
 }
 
+macro_rules! ident2com {
+    (nodejs) => {
+        Com::NodeJS
+    };
+    (mongodb) => {
+        Com::MongoDB
+    };
+    (minio) => {
+        Com::MinIO
+    };
+    (sandbox) => {
+        Com::Sandbox
+    };
+    (yarn) => {
+        Com::Yarn
+    };
+    (pm2) => {
+        Com::PM2
+    };
+    (hydro) => {
+        Com::Hydro
+    };
+}
+
 macro_rules! wait_for_components {
     ($com:expr, $rx:expr, $($dep_com:expr),+ $(,)?) => {{
         let mut coms = vec![$($dep_com),+];
+        let mut res = vec![$(::either::Left($dep_com)),+];
         while !coms.is_empty() {
             match $rx.recv().await.map_err(|e| Error::new($com, ErrorKind::RecvError(e)))? {
-                Signal::Ready(com, _info) => {
-                    // TODO: collect ComponentInfo
+                Signal::Ready(com, info) => {
                     if let Some(pos) = coms.iter().position(|x| *x == com) {
                         coms.swap_remove(pos);
+                        let pos = res
+                            .iter()
+                            .position(|x| matches!(*x, ::either::Left(y) if y == com))
+                            .unwrap();
+                        res[pos] = ::either::Right(info);
                     }
                 }
                 Signal::Failed(com) => {
@@ -92,6 +121,17 @@ macro_rules! wait_for_components {
                     }
                 }
             }
+        }
+        res
+        .into_iter()
+        .map(|x| x.right().unwrap())
+        .collect::<Vec<_>>()
+    }};
+    {($com:expr, $rx:expr, $($dep_com:tt),+ $(,)?) => $run:expr} => {{
+        if let [$($dep_com),+] = *wait_for_components!($com, $rx, $(ident2com!($dep_com)),+) {
+            $run($($dep_com),+).await
+        } else {
+            unreachable!()
         }
     }};
 }
@@ -107,18 +147,21 @@ pub async fn install(com: Com, rx: Option<Receiver<Signal<'_>>>) -> Result<(Com,
         Com::Sandbox => install_sandbox().await,
         Com::Yarn => {
             let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components!(com, rx, Com::NodeJS);
-            install_yarn().await
+            wait_for_components! {
+                (com, rx, nodejs) => install_yarn
+            }
         }
         Com::PM2 => {
             let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components!(com, rx, Com::NodeJS);
-            install_pm2().await
+            wait_for_components! {
+                (com, rx, nodejs) => install_pm2
+            }
         }
         Com::Hydro => {
             let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components!(com, rx, Com::NodeJS, Com::Yarn);
-            install_hydro().await
+            wait_for_components! {
+                (com, rx, nodejs, yarn) => install_hydro
+            }
         }
     }
     .map(|ok| (com, ok))
@@ -260,7 +303,7 @@ async fn install_sandbox() -> InstallResult<ComponentInfo> {
     Ok(ComponentInfo::new(Version::Installed, Some(path)))
 }
 
-async fn install_yarn() -> InstallResult<ComponentInfo> {
+async fn install_yarn(_nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Yarn... Start to install Yarn...");
 
     time::sleep(time::Duration::from_secs(20)).await;
@@ -268,7 +311,7 @@ async fn install_yarn() -> InstallResult<ComponentInfo> {
     Err(ErrorKind::Other("not yet implemented".to_owned()))
 }
 
-async fn install_pm2() -> InstallResult<ComponentInfo> {
+async fn install_pm2(_nodejs: &ComponentInfo) -> InstallResult<ComponentInfo> {
     log::info!("开始安装 PM2... Start to install PM2...");
 
     time::sleep(time::Duration::from_secs(5)).await;
@@ -276,7 +319,10 @@ async fn install_pm2() -> InstallResult<ComponentInfo> {
     Err(ErrorKind::Other("not yet implemented".to_owned()))
 }
 
-async fn install_hydro() -> InstallResult<ComponentInfo> {
+async fn install_hydro(
+    _nodejs: &ComponentInfo,
+    _yarn: &ComponentInfo,
+) -> InstallResult<ComponentInfo> {
     log::info!("开始安装 Hydro... Start to install Hydro...");
 
     time::sleep(time::Duration::from_secs(5)).await;
