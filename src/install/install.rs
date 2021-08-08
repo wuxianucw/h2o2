@@ -127,13 +127,14 @@ macro_rules! wait_for_components {
         .map(|x| x.right().unwrap())
         .collect::<Vec<_>>()
     }};
-    {($com:expr, $rx:expr, $($dep_com:tt),+ $(,)?) => $run:expr} => {
-        if let [$($dep_com),+] = *wait_for_components!($com, $rx, $(ident2com!($dep_com)),+) {
+    {($com:expr, $rx:expr) @ [$($dep_com:tt),+ $(,)?] => $run:expr} => {{
+        let mut rx = $rx.expect("Receiver cannot be `None`");
+        if let [$($dep_com),+] = *wait_for_components!($com, rx, $(ident2com!($dep_com)),+) {
             $run($($dep_com),+).await
         } else {
             unreachable!()
         }
-    };
+    }};
 }
 
 pub type Result<T> = StdResult<T, Error>;
@@ -145,24 +146,15 @@ pub async fn install(com: Com, rx: Option<Receiver<Signal<'_>>>) -> Result<(Com,
         Com::MongoDB => install_mongodb().await,
         Com::MinIO => install_minio().await,
         Com::Sandbox => install_sandbox().await,
-        Com::Yarn => {
-            let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components! {
-                (com, rx, nodejs) => install_yarn
-            }
-        }
-        Com::PM2 => {
-            let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components! {
-                (com, rx, nodejs) => install_pm2
-            }
-        }
-        Com::Hydro => {
-            let mut rx = rx.expect("Receiver cannot be `None`");
-            wait_for_components! {
-                (com, rx, nodejs, yarn) => install_hydro
-            }
-        }
+        Com::Yarn => wait_for_components! {
+            (com, rx) @ [nodejs] => install_yarn
+        },
+        Com::PM2 => wait_for_components! {
+            (com, rx) @ [nodejs] => install_pm2
+        },
+        Com::Hydro => wait_for_components! {
+            (com, rx) @ [nodejs, yarn] => install_hydro
+        },
     }
     .map(|ok| (com, ok))
     .map_err(|e| Error::new(com, e))
