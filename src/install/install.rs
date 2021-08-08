@@ -127,13 +127,13 @@ macro_rules! wait_for_components {
         .map(|x| x.right().unwrap())
         .collect::<Vec<_>>()
     }};
-    {($com:expr, $rx:expr, $($dep_com:tt),+ $(,)?) => $run:expr} => {{
+    {($com:expr, $rx:expr, $($dep_com:tt),+ $(,)?) => $run:expr} => {
         if let [$($dep_com),+] = *wait_for_components!($com, $rx, $(ident2com!($dep_com)),+) {
             $run($($dep_com),+).await
         } else {
             unreachable!()
         }
-    }};
+    };
 }
 
 pub type Result<T> = StdResult<T, Error>;
