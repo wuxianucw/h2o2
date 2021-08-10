@@ -36,6 +36,10 @@ enum SubCommand {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    better_panic::Settings::new()
+        .message("Oops, H2O2 panicked (crashed).")
+        .verbosity(better_panic::Verbosity::Medium)
+        .install();
     h2o2::log::init();
     let args = Args::parse();
 
