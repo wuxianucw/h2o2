@@ -105,8 +105,8 @@ pub async fn main(args: Args) -> Result<()> {
                 }
             } else {
                 log::error!(
-                    "Node.js 异常退出，无法识别版本。 \
-                    Node.js exited abnormally and the version could not be recognized. ({})",
+                    "Node.js 异常退出（{0}），无法识别版本。 \
+                    Node.js exited abnormally and the version could not be recognized. ({0})",
                     &output.status,
                 );
                 debug_output(&output);
@@ -117,9 +117,8 @@ pub async fn main(args: Args) -> Result<()> {
                 log::error!("未找到 Node.js。 Node.js is not found.");
             } else {
                 log::error!(
-                    "命令 `{} -v` 执行异常。 Failed to execute `{} -v`.",
+                    "命令 `{0} -v` 执行异常。 Failed to execute `{0} -v`.",
                     executable,
-                    executable
                 );
                 log::debug!("{:#?}", e);
             }
@@ -167,8 +166,8 @@ pub async fn main(args: Args) -> Result<()> {
                 }
             } else {
                 log::error!(
-                    "MongoDB 异常退出，无法识别版本。 \
-                    MongoDB exited abnormally and the version could not be recognized. ({})",
+                    "MongoDB 异常退出（{0}），无法识别版本。 \
+                    MongoDB exited abnormally and the version could not be recognized. ({0})",
                     &output.status,
                 );
                 debug_output(&output);
@@ -179,9 +178,8 @@ pub async fn main(args: Args) -> Result<()> {
                 log::error!("未找到 MongoDB。 MongoDB is not found.");
             } else {
                 log::error!(
-                    "命令 `{} --version` 执行异常。 Failed to execute `{} --version`.",
+                    "命令 `{0} --version` 执行异常。 Failed to execute `{0} --version`.",
                     executable,
-                    executable
                 );
                 log::debug!("{:#?}", e);
             }
@@ -230,9 +228,8 @@ pub async fn main(args: Args) -> Result<()> {
                 log::error!("未找到 MinIO。 MinIO is not found.");
             } else {
                 log::error!(
-                    "命令 `{} -v` 执行异常。 Failed to execute `{} -v`.",
+                    "命令 `{0} -v` 执行异常。 Failed to execute `{0} -v`.",
                     executable,
-                    executable
                 );
                 log::debug!("{:#?}", e);
             }
@@ -275,8 +272,8 @@ pub async fn main(args: Args) -> Result<()> {
                     }
                 } else {
                     log::error!(
-                        "Yarn 异常退出，无法识别版本。 \
-                        Yarn exited abnormally and the version could not be recognized. ({})",
+                        "Yarn 异常退出（{0}），无法识别版本。 \
+                        Yarn exited abnormally and the version could not be recognized. ({0})",
                         &output.status,
                     );
                     debug_output(&output);
@@ -287,9 +284,8 @@ pub async fn main(args: Args) -> Result<()> {
                     log::error!("未找到 Yarn。 Yarn is not found.");
                 } else {
                     log::error!(
-                        "命令 `{} -v` 执行异常。 Failed to execute `{} -v`.",
+                        "命令 `{0} -v` 执行异常。 Failed to execute `{0} -v`.",
                         executable,
-                        executable
                     );
                     log::debug!("{:#?}", e);
                 }
@@ -334,8 +330,8 @@ pub async fn main(args: Args) -> Result<()> {
                     }
                 } else {
                     log::error!(
-                        "PM2 异常退出，无法识别版本。 \
-                        PM2 exited abnormally and the version could not be recognized. ({})",
+                        "PM2 异常退出（{0}），无法识别版本。 \
+                        PM2 exited abnormally and the version could not be recognized. ({0})",
                         &output.status,
                     );
                     debug_output(&output);
@@ -346,9 +342,8 @@ pub async fn main(args: Args) -> Result<()> {
                     log::error!("未找到 PM2。 PM2 is not found.");
                 } else {
                     log::error!(
-                        "命令 `{} -v -s --no-daemon` 执行异常。 Failed to execute `{} -v -s --no-daemon`.",
+                        "命令 `{0} -v -s --no-daemon` 执行异常。 Failed to execute `{0} -v -s --no-daemon`.",
                         executable,
-                        executable
                     );
                     log::debug!("{:#?}", e);
                 }
@@ -430,9 +425,8 @@ pub async fn main(args: Args) -> Result<()> {
                         log::error!("未找到 Hydro。 Hydro is not found.");
                     } else {
                         log::error!(
-                            "命令 `{} -e <...>` 执行异常。 Failed to execute `{} -e <...>`.",
+                            "命令 `{0} -e <...>` 执行异常。 Failed to execute `{0} -e <...>`.",
                             node,
-                            node
                         );
                         log::debug!("{:#?}", e);
                     }
